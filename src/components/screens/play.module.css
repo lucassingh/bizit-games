@@ -1,0 +1,170 @@
+.play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: calc(16 * var(--u));
+  padding-block: max(calc(16 * var(--u)), env(safe-area-inset-top, 0px)) max(calc(16 * var(--u)), env(safe-area-inset-bottom, 0px));
+  padding-left: max(calc(16 * var(--u)), env(safe-area-inset-left, 0px));
+  padding-right: max(calc(16 * var(--u)), env(safe-area-inset-right, 0px));
+  background: var(--surface);
+}
+
+.tv {
+  grid-template-columns: minmax(0, 1fr) calc(330 * var(--u));
+}
+
+.tablet {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.stageWrap {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+}
+
+.stage {
+  --cut: calc(34 * var(--u));
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.host {
+  position: absolute;
+  inset: calc(2 * var(--u));
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+.host canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.count {
+  font-family: var(--display);
+  font-size: calc(200 * var(--u));
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 calc(10 * var(--u)) 0 var(--accent-deep);
+  animation: pop-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.gestures {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24 * var(--u));
+  transform: translateX(-50%);
+  display: flex;
+  gap: calc(16 * var(--u));
+  pointer-events: none;
+  animation: rise-in 0.4s both;
+}
+
+.gesture {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+  background: rgba(255, 255, 255, 0.94);
+  border: calc(2 * var(--u)) solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(8 * var(--u)) calc(20 * var(--u)) calc(8 * var(--u)) calc(10 * var(--u));
+  font-weight: 800;
+  font-size: calc(18 * var(--u));
+  box-shadow: 0 calc(6 * var(--u)) 0 var(--line);
+  white-space: nowrap;
+}
+
+.banner {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  pointer-events: none;
+  animation: banner 1.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  text-align: center;
+}
+
+.banner strong {
+  font-family: var(--display);
+  font-size: calc(64 * var(--u));
+  line-height: 1;
+  letter-spacing: -1px;
+  color: #fff;
+  background: var(--accent);
+  padding: calc(14 * var(--u)) calc(30 * var(--u));
+  border-radius: calc(26 * var(--u));
+  box-shadow: 0 calc(9 * var(--u)) 0 var(--accent-deep), 0 calc(20 * var(--u)) calc(40 * var(--u)) rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+
+.bannerPlan {
+  font: 800 calc(14 * var(--u)) var(--body);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  background: var(--noche);
+  color: var(--lima);
+  padding: calc(6 * var(--u)) calc(14 * var(--u));
+  border-radius: 999px;
+}
+
+@keyframes banner {
+  0% {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateX(-50%) scale(1.06);
+    opacity: 1;
+  }
+  25%,
+  80% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(calc(-30 * var(--u))) scale(0.96);
+    opacity: 0;
+  }
+}
+
+.hint {
+  position: absolute;
+  top: calc(18 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-size: calc(26 * var(--u));
+  background: var(--noche);
+  color: var(--lima);
+  padding: calc(10 * var(--u)) calc(22 * var(--u));
+  border-radius: 999px;
+  pointer-events: none;
+  animation: pop-in 0.3s both;
+  white-space: nowrap;
+}

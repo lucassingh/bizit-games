@@ -1,0 +1,127 @@
+.icon {
+  overflow: visible;
+  flex: none;
+}
+
+.icon path,
+.icon circle,
+.icon rect {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hand path {
+  fill: #fff;
+}
+
+.hand {
+  transform-origin: 50% 70%;
+}
+
+.arrows path,
+.ripple circle,
+.sling path,
+.sling circle,
+.area {
+  stroke: var(--accent);
+}
+
+/* deslizar: la mano va y viene */
+.swipe_h .hand {
+  animation: swipe 1.6s ease-in-out infinite;
+}
+@keyframes swipe {
+  0%,
+  100% {
+    transform: translateX(-14px) rotate(-6deg);
+  }
+  50% {
+    transform: translateX(14px) rotate(6deg);
+  }
+}
+
+/* tocar: la mano baja y aparece la onda */
+.tap .hand,
+.tap_area .hand {
+  animation: tap 1.2s ease-in-out infinite;
+}
+.tap_fast .hand {
+  animation: tap 0.35s ease-in-out infinite;
+}
+@keyframes tap {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(6px) scale(0.96);
+  }
+}
+.ripple circle {
+  transform-origin: 35px 22px;
+  animation: ripple 1.2s ease-out infinite;
+}
+.ripple circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.tap_fast .ripple circle {
+  animation-duration: 0.35s;
+}
+@keyframes ripple {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+.area {
+  animation: area 1.2s ease-in-out infinite;
+}
+@keyframes area {
+  40%,
+  60% {
+    fill: var(--accent);
+  }
+}
+
+/* arrastrar y soltar: la mano tira hacia atrás y suelta */
+.drag_release .hand {
+  animation: drag 1.8s cubic-bezier(0.5, 0, 0.2, 1) infinite;
+}
+@keyframes drag {
+  0% {
+    transform: translate(0, 0);
+  }
+  55% {
+    transform: translate(-18px, 10px);
+  }
+  62%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.sling path:last-child {
+  animation: fly 1.8s ease-out infinite;
+  stroke-dashoffset: 0;
+}
+@keyframes fly {
+  0%,
+  55% {
+    opacity: 0;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

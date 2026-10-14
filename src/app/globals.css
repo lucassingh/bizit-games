@@ -1,0 +1,461 @@
+/*
+ * Bizit Game Center · tokens y kit "Bizit Game UI".
+ * Modo claro con la marca Bizit (naranja sobre blanco). Lo que es IA (BGen,
+ * conectores, power-ups) usa los acentos de BGenAI (cian → lima).
+ * Fuente de verdad: docs/08-branding-aplicado.md.
+ */
+
+:root {
+  /* Bizit */
+  --bg: #ffffff;
+  --surface: #f6f4f2;
+  --surface-2: #efe9e2;
+  --ink: #212529;
+  --muted: #54595f;
+  --line: #e6e1dc;
+  --orange: #f75d00;
+  --orange-logo: #fa6b00;
+  --orange-warm: #ec7203;
+  --orange-deep: #b84400;
+  --grad-bizit: linear-gradient(100deg, #fe8100, #f75d00 45%, #e80000);
+  --violet: #662d91;
+  --red: #c52126;
+  /* BGenAI (capa de IA) */
+  --cian: #0ab6bc;
+  --cian-ink: #067f84;
+  --lima: #b2f326;
+  --grad-ia: linear-gradient(120deg, #0ab6bc, #b2f326);
+  --noche: #131315;
+  --negro: #0a0a0c;
+  --niebla: #e6e6f0;
+  /* acento del juego activo (lo cambia cada pantalla de juego) */
+  --accent: var(--orange);
+  --accent-deep: var(--orange-deep);
+
+  /* tipografía */
+  --display: "Archivo Black", "Archivo", "Arial Black", Arial, sans-serif;
+  --heading: "Archivo", Arial, sans-serif;
+  --body: "Inter", "Archivo", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  /* escala: pensada para tablet; la TV la agranda con --u */
+  --u: 1px;
+  --radius: calc(22 * var(--u));
+  --radius-lg: calc(32 * var(--u));
+  --shadow-panel: 0 calc(8 * var(--u)) 0 #e3dcd4, 0 calc(24 * var(--u)) calc(48 * var(--u)) rgba(33, 37, 41, 0.08);
+
+  color-scheme: light;
+}
+
+/* TV 45–55": todo un 40% más grande para leerse a 3 m */
+[data-layout="tv"] {
+  --u: 1.4px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: calc(16 * var(--u));
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--cian);
+  outline-offset: 3px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+}
+
+/* ---------- Kit: botones ---------- */
+
+.btn {
+  --b-bg: var(--accent);
+  --b-deep: var(--accent-deep);
+  --b-fg: #fff;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(10 * var(--u));
+  min-height: calc(64 * var(--u));
+  padding: 0 calc(34 * var(--u));
+  border-radius: 999px;
+  background: var(--b-bg);
+  color: var(--b-fg);
+  font-family: var(--display);
+  font-size: calc(22 * var(--u));
+  letter-spacing: -0.2px;
+  box-shadow: 0 calc(7 * var(--u)) 0 var(--b-deep), 0 calc(14 * var(--u)) calc(24 * var(--u)) rgba(0, 0, 0, 0.12);
+  transform: translateY(0);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s;
+  touch-action: manipulation;
+}
+
+.btn:hover {
+  filter: brightness(1.05);
+}
+
+.btn:active {
+  transform: translateY(calc(5 * var(--u)));
+  box-shadow: 0 calc(2 * var(--u)) 0 var(--b-deep), 0 calc(4 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.1);
+}
+
+.btn[disabled] {
+  --b-bg: #d7d1ca;
+  --b-deep: #b9b1a8;
+  cursor: not-allowed;
+}
+
+.btn-lg {
+  min-height: calc(84 * var(--u));
+  font-size: calc(30 * var(--u));
+  padding: 0 calc(48 * var(--u));
+}
+
+.btn-light {
+  --b-bg: #fff;
+  --b-deep: #ddd5cc;
+  --b-fg: var(--ink);
+  border: calc(2 * var(--u)) solid var(--line);
+}
+
+.btn-ia {
+  --b-bg: var(--grad-ia);
+  --b-deep: #6aa31a;
+  --b-fg: var(--negro);
+  background: var(--grad-ia);
+}
+
+.btn-icon {
+  min-height: 0;
+  width: calc(64 * var(--u));
+  height: calc(64 * var(--u));
+  padding: 0;
+}
+
+/* ---------- Kit: paneles ---------- */
+
+.panel {
+  background: #fff;
+  border: calc(2 * var(--u)) solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--display);
+  font-size: calc(18 * var(--u));
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: calc(8 * var(--u)) calc(20 * var(--u));
+  border-radius: 999px;
+  box-shadow: 0 calc(4 * var(--u)) 0 var(--accent-deep);
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: calc(13 * var(--u));
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Kit: chips de selección ---------- */
+
+.chip {
+  appearance: none;
+  cursor: pointer;
+  border: calc(2 * var(--u)) solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: calc(12 * var(--u)) calc(20 * var(--u));
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: calc(17 * var(--u));
+  box-shadow: 0 calc(4 * var(--u)) 0 var(--line);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s, border-color 0.15s;
+  touch-action: manipulation;
+}
+
+.chip:active {
+  transform: translateY(calc(3 * var(--u)));
+  box-shadow: 0 calc(1 * var(--u)) 0 var(--line);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  box-shadow: 0 calc(4 * var(--u)) 0 #000;
+}
+
+/* ---------- Kit: cápsulas de estadística y barras ---------- */
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  background: #fff;
+  border: calc(2 * var(--u)) solid var(--line);
+  border-radius: 999px;
+  padding: calc(6 * var(--u)) calc(16 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u));
+  box-shadow: 0 calc(4 * var(--u)) 0 var(--line);
+}
+
+.stat-icon {
+  width: calc(40 * var(--u));
+  height: calc(40 * var(--u));
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  flex: none;
+}
+
+.stat-value {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: calc(26 * var(--u));
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.bar {
+  height: calc(18 * var(--u));
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: calc(2 * var(--u)) solid var(--line);
+  overflow: hidden;
+}
+
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 0 calc(8 * var(--u)), transparent calc(8 * var(--u)) calc(16 * var(--u))),
+    var(--grad-ia);
+  transition: width 0.35s ease;
+}
+
+.bar.bizit > i {
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.25) 0 calc(8 * var(--u)), transparent calc(8 * var(--u)) calc(16 * var(--u))),
+    var(--grad-bizit);
+}
+
+/* ---------- Animaciones ---------- */
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    transform: translateY(calc(24 * var(--u)));
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(-10 * var(--u)));
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(247, 93, 0, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 calc(26 * var(--u)) rgba(247, 93, 0, 0);
+  }
+}
+
+.rise {
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Kit: marcos "tech" claros (esquinas biseladas, corchetes, ticks) ----------
+ * Futurista sobre fondo claro: lo usan el escenario del juego, el HUD y las pestañas.
+ * El borde es el fondo del contenedor recortado; ::before pinta el relleno 2px adentro.
+ */
+.tech {
+  --cut: calc(22 * var(--u));
+  --tech-border: #d9d1c8;
+  --tech-fill: #fff;
+  position: relative;
+  isolation: isolate;
+  background: var(--tech-border);
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+.tech::before {
+  content: "";
+  position: absolute;
+  inset: calc(2 * var(--u));
+  z-index: -1;
+  background: var(--tech-fill);
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+/* sombra dura (sin filter: drop-shadow, que es carísimo sobre un canvas que cambia cada frame) */
+.tech-shadow {
+  position: relative;
+  isolation: isolate;
+}
+
+.tech-shadow::before {
+  content: "";
+  position: absolute;
+  inset: calc(8 * var(--u)) 0 calc(-8 * var(--u)) 0;
+  z-index: -1;
+  background: #e6dfd7;
+  --cut: calc(22 * var(--u));
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+/* corchetes de esquina y línea de acento */
+.tech-brackets {
+  position: absolute;
+  inset: calc(10 * var(--u));
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tech-brackets::before,
+.tech-brackets::after {
+  content: "";
+  position: absolute;
+  width: calc(46 * var(--u));
+  height: calc(16 * var(--u));
+  border: solid var(--cian);
+  border-width: calc(3 * var(--u)) 0 0 calc(3 * var(--u));
+  top: calc(8 * var(--u));
+  left: calc(8 * var(--u));
+}
+
+.tech-brackets::after {
+  border-width: 0 calc(3 * var(--u)) calc(3 * var(--u)) 0;
+  top: auto;
+  left: auto;
+  bottom: calc(8 * var(--u));
+  right: calc(8 * var(--u));
+}
+
+.tech-line {
+  position: absolute;
+  top: 0;
+  right: calc(26 * var(--u) + 10%);
+  width: 22%;
+  height: calc(4 * var(--u));
+  background: var(--grad-ia);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* indicadores de cuadraditos (fases) */
+.ticks {
+  display: inline-flex;
+  gap: calc(5 * var(--u));
+}
+
+.ticks i {
+  width: calc(14 * var(--u));
+  height: calc(14 * var(--u));
+  border: calc(2 * var(--u)) solid var(--cian);
+  background: transparent;
+  transition: background 0.3s;
+}
+
+.ticks i.on {
+  background: var(--cian);
+}
+
+.ticks i.now {
+  background: var(--lima);
+  border-color: var(--lima);
+  animation: pop-in 0.4s both;
+}
+
+/* pestaña biselada (reemplaza la píldora del título) */
+.panel-title {
+  border-radius: 0;
+  clip-path: polygon(calc(12 * var(--u)) 0, 100% 0, calc(100% - calc(12 * var(--u))) 100%, 0 100%);
+  padding-inline: calc(28 * var(--u));
+  box-shadow: none;
+}
