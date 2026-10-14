@@ -140,14 +140,11 @@ export function drawBGen(ctx: CanvasRenderingContext2D, x: number, y: number, si
   }
   ctx.fillStyle = COLORS.bgenBody;
   ctx.fill(decagon2D);
-  ctx.strokeStyle = COLORS.niebla;
+  ctx.strokeStyle = COLORS.bgenStroke;
   ctx.lineWidth = 3.6;
   markPaths2D.forEach((p) => ctx.stroke(p));
   ctx.fillStyle = COLORS.visor;
   ctx.fill(visor2D!);
-  ctx.strokeStyle = "rgba(255,255,255,.14)";
-  ctx.lineWidth = 1;
-  ctx.stroke(visor2D!);
   ctx.shadowColor = COLORS.lima;
   ctx.shadowBlur = 6;
   for (const sh of faceShapes(face)) {

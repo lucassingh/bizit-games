@@ -20,7 +20,7 @@ export default function GameSelect({ config }: { config: KioskConfig }) {
         <div className={s.modalHead}>
           <div>
             <span className="eyebrow">Paso 2 · {player ? `¡Hola, ${player.firstName}!` : ""}</span>
-            <h2 id="sel-title" className={s.h1} style={{ fontSize: "calc(44 * var(--u))", marginTop: "calc(6 * var(--u))" }}>
+            <h2 id="sel-title" className={s.h1} style={{ fontSize: "calc(36 * var(--u))", marginTop: "calc(6 * var(--u))" }}>
               Elegí tu <em>desafío</em>
             </h2>
           </div>
@@ -45,7 +45,7 @@ export default function GameSelect({ config }: { config: KioskConfig }) {
                   <h3>{g.name}</h3>
                   <p>{g.tagline}</p>
                   <div className={s.cardFoot}>
-                    <GestureIcon gesture={g.controls[0].gesture} size={52} />
+                    <GestureIcon gesture={g.controls[0].gesture} size={46} />
                     <span className={s.playTag}>Jugar</span>
                   </div>
                 </div>

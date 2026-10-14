@@ -117,7 +117,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
           <div className={p.gestures}>
             {g.controls.map((c) => (
               <div key={c.label} className={p.gesture}>
-                <GestureIcon gesture={c.gesture} size={layout === "tv" ? 110 : 84} />
+                <GestureIcon gesture={c.gesture} size={layout === "tv" ? 84 : 68} />
                 <span>{c.label}</span>
               </div>
             ))}

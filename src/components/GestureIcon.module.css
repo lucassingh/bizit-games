@@ -4,29 +4,33 @@
 }
 
 .icon path,
-.icon circle,
 .icon rect {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 4;
+  stroke-width: 5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.hand path {
+.hand path:first-child {
   fill: #fff;
 }
 
-.hand {
-  transform-origin: 50% 70%;
+.fingers {
+  stroke-width: 4;
 }
 
-.arrows path,
-.ripple circle,
-.sling path,
-.sling circle,
+.hand {
+  transform-origin: 50% 80%;
+}
+
+.accent path,
 .area {
   stroke: var(--accent);
+}
+
+.area {
+  fill: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 /* deslizar: la mano va y viene */
@@ -36,89 +40,107 @@
 @keyframes swipe {
   0%,
   100% {
-    transform: translateX(-14px) rotate(-6deg);
+    transform: translateX(-12px);
   }
   50% {
-    transform: translateX(14px) rotate(6deg);
+    transform: translateX(12px);
   }
 }
 
-/* tocar: la mano baja y aparece la onda */
+/* tocar: la mano baja y aparecen las ondas */
 .tap .hand,
 .tap_area .hand {
-  animation: tap 1.2s ease-in-out infinite;
+  animation: tap 1.3s ease-in-out infinite;
 }
 .tap_fast .hand {
-  animation: tap 0.35s ease-in-out infinite;
+  animation: tap 0.4s ease-in-out infinite;
 }
 @keyframes tap {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
   40% {
-    transform: translateY(6px) scale(0.96);
+    transform: translateY(7px) scale(0.97);
   }
 }
-.ripple circle {
-  transform-origin: 35px 22px;
-  animation: ripple 1.2s ease-out infinite;
+.ripple path {
+  transform-origin: 45px 22px;
+  animation: ripple 1.3s ease-out infinite;
 }
-.ripple circle:nth-child(2) {
-  animation-delay: 0.2s;
+.ripple path:nth-child(2) {
+  animation-delay: 0.15s;
 }
-.tap_fast .ripple circle {
-  animation-duration: 0.35s;
+.tap_fast .ripple path {
+  animation-duration: 0.4s;
 }
 @keyframes ripple {
   0% {
-    transform: scale(0.4);
+    transform: scale(0.5);
     opacity: 0;
   }
-  40% {
+  45% {
     opacity: 1;
   }
   100% {
-    transform: scale(1.2);
+    transform: scale(1.15);
     opacity: 0;
   }
 }
 .area {
-  animation: area 1.2s ease-in-out infinite;
+  animation: area 1.3s ease-in-out infinite;
 }
 @keyframes area {
   40%,
   60% {
-    fill: var(--accent);
+    fill: color-mix(in srgb, var(--accent) 60%, transparent);
   }
 }
 
-/* arrastrar y soltar: la mano tira hacia atrás y suelta */
+/* arrastrar y soltar: la mano tira hacia atrás, suelta y sale la trayectoria */
 .drag_release .hand {
-  animation: drag 1.8s cubic-bezier(0.5, 0, 0.2, 1) infinite;
+  animation: drag 2s cubic-bezier(0.5, 0, 0.2, 1) infinite;
 }
 @keyframes drag {
   0% {
     transform: translate(0, 0);
   }
-  55% {
-    transform: translate(-18px, 10px);
+  45% {
+    transform: translate(-16px, 12px);
   }
-  62%,
+  55%,
   100% {
     transform: translate(0, 0);
   }
 }
-.sling path:last-child {
-  animation: fly 1.8s ease-out infinite;
-  stroke-dashoffset: 0;
+.pull {
+  animation: pull 2s ease infinite;
+}
+@keyframes pull {
+  0%,
+  10% {
+    opacity: 0;
+  }
+  20%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+.arc,
+.arcHead {
+  animation: fly 2s ease-out infinite;
 }
 @keyframes fly {
   0%,
-  55% {
+  50% {
     opacity: 0;
   }
-  70% {
+  62%,
+  90% {
     opacity: 1;
   }
   100% {

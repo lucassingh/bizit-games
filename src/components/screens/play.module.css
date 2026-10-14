@@ -1,16 +1,17 @@
+/* Misma lógica que el marco de las otras pantallas: fondo gris claro y cards con aire. */
 .play {
   position: absolute;
   inset: 0;
   display: grid;
-  gap: calc(16 * var(--u));
-  padding-block: max(calc(16 * var(--u)), env(safe-area-inset-top, 0px)) max(calc(16 * var(--u)), env(safe-area-inset-bottom, 0px));
-  padding-left: max(calc(16 * var(--u)), env(safe-area-inset-left, 0px));
-  padding-right: max(calc(16 * var(--u)), env(safe-area-inset-right, 0px));
-  background: var(--surface);
+  gap: calc(22 * var(--u));
+  padding-block: max(calc(26 * var(--u)), env(safe-area-inset-top, 0px)) max(calc(26 * var(--u)), env(safe-area-inset-bottom, 0px));
+  padding-left: max(calc(30 * var(--u)), env(safe-area-inset-left, 0px));
+  padding-right: max(calc(30 * var(--u)), env(safe-area-inset-right, 0px));
+  background: var(--page);
 }
 
 .tv {
-  grid-template-columns: minmax(0, 1fr) calc(330 * var(--u));
+  grid-template-columns: minmax(0, 1fr) calc(290 * var(--u));
 }
 
 .tablet {
@@ -24,7 +25,7 @@
 }
 
 .stage {
-  --cut: calc(34 * var(--u));
+  --cut: calc(28 * var(--u));
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -64,7 +65,7 @@
 
 .count {
   font-family: var(--display);
-  font-size: calc(200 * var(--u));
+  font-size: calc(160 * var(--u));
   line-height: 1;
   color: var(--accent);
   text-shadow: 0 calc(10 * var(--u)) 0 var(--accent-deep);
@@ -91,7 +92,7 @@
   border-radius: var(--radius);
   padding: calc(8 * var(--u)) calc(20 * var(--u)) calc(8 * var(--u)) calc(10 * var(--u));
   font-weight: 800;
-  font-size: calc(18 * var(--u));
+  font-size: calc(16 * var(--u));
   box-shadow: 0 calc(6 * var(--u)) 0 var(--line);
   white-space: nowrap;
 }
@@ -112,7 +113,7 @@
 
 .banner strong {
   font-family: var(--display);
-  font-size: calc(64 * var(--u));
+  font-size: calc(50 * var(--u));
   line-height: 1;
   letter-spacing: -1px;
   color: #fff;
@@ -159,7 +160,7 @@
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--display);
-  font-size: calc(26 * var(--u));
+  font-size: calc(21 * var(--u));
   background: var(--noche);
   color: var(--lima);
   padding: calc(10 * var(--u)) calc(22 * var(--u));

@@ -78,7 +78,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
 
   const bgenBlock = (
     <div className={h.bgen}>
-      <BGen expr={expr} size={layout === "tv" ? 96 : 76} talkKey={say?.id} aura={phase >= 1} glow={false} float={false} />
+      <BGen expr={expr} size={layout === "tv" ? 84 : 64} talkKey={say?.id} aura={phase >= 1} glow={false} float={false} />
       {say && layout === "tv" && (
         <p key={say.id} className={h.say}>
           {say.text}
@@ -91,7 +91,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
     <div className={h.controls}>
       {g.controls.map((c) => (
         <div key={c.label} className={h.control}>
-          <GestureIcon gesture={c.gesture} size={layout === "tv" ? 54 : 40} />
+          <GestureIcon gesture={c.gesture} size={layout === "tv" ? 44 : 36} />
           <span>{c.label}</span>
         </div>
       ))}
