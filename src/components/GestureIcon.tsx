@@ -29,6 +29,12 @@ export default function GestureIcon({ gesture, size = 72 }: { gesture: Gesture; 
         </g>
       )}
       {gesture === "tap-area" && <rect className={styles.area} x="58" y="4" width="36" height="26" rx="7" />}
+      {gesture === "hold-up" && (
+        <g className={styles.accent}>
+          <path className={styles.up} d="M78 34V10m0 0l-8 8m8-8l8 8" />
+          <path className={styles.speed} d="M14 30h14M10 40h10M16 50h8" />
+        </g>
+      )}
       {gesture === "drag-release" && (
         <g className={styles.accent}>
           <path className={styles.pull} d="M34 32L14 50m0 0l1-10m-1 10l10-1" />

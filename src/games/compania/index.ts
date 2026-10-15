@@ -100,7 +100,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const b = new THREE.Vector3(W[i + 1][0], 0.6, W[i + 1][1]);
     const din = p.clone().sub(a).normalize();
     const dout = b.clone().sub(p).normalize();
-    pts.push(p.clone().addScaledVector(din, -5), p.clone().addScaledVector(din.add(dout).normalize(), 0.8), p.clone().addScaledVector(dout, 5));
+    // radio de giro ~9 > medio ancho de la cinta (5.1): la cinta no se pliega en las esquinas
+    pts.push(p.clone().addScaledVector(din, -9), p.clone().addScaledVector(din.add(dout).normalize(), 1.6), p.clone().addScaledVector(dout, 9));
   }
   // puntos intermedios para que las rectas queden rectas
   const dense: THREE.Vector3[] = [pts[0]];
@@ -328,8 +329,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         break;
       }
       case "fantasma": {
-        add(new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12), M.ghost)).position.y = 0.4;
-        const tail = add(new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.4, 12, 1, true), M.ghost));
+        add(new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 12), M.ghost)).position.y = 0.4;
+        const tail = add(new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.4, 12, 1, true), M.ghost));
         tail.rotation.x = Math.PI;
         tail.position.y = -0.5;
         eyes(g, 0.55, 0.95, 0.38);
@@ -385,7 +386,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const hits = [0, 0, 0];
   function place(it: Omit<Item, "obj" | "low" | "baseY" | "done" | "phase">) {
     const { obj, low, y } = makeObj(it.kind);
-    if (it.kind !== "conector" && it.kind !== "botella") obj.scale.setScalar(1.3);
+    if (it.kind !== "conector" && it.kind !== "botella" && it.kind !== "fantasma") obj.scale.setScalar(1.3);
     const p = curve.getPointAt(Math.min(0.999, it.s / L));
     const tg = curve.getTangentAt(Math.min(0.999, it.s / L));
     const r = new THREE.Vector3(-tg.z, 0, tg.x).normalize();
@@ -397,7 +398,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     items.push({ ...it, obj, low, baseY: y, done: false, phase: rand() * 6 });
     if (it.kind === "conector") conTotal[it.sec]++;
   }
-  const near = (s: number) => SB.some((b) => Math.abs(s - b) < 9);
+  // ni en los límites de tramo ni en las esquinas (ahí los carriles se cierran y el esquive se vuelve injusto)
+  const corners = W.slice(1, -1).map(([x, z]) => distTo(x, z));
+  const near = (s: number) => SB.some((b) => Math.abs(s - b) < 9) || corners.some((c) => Math.abs(s - c) < 13);
   for (let sec = 0; sec < 3; sec++) {
     let s = SB[sec] + (sec === 0 ? 22 : 12);
     const end = SB[sec + 1] - 8;
@@ -470,6 +473,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let showcase: { zone: ZoneId; until: number } | null = null;
   let charge = 0;
   let beamFired = false;
+  let boostShown = false;
   let ended = false;
   const finalPower: number[] = [0, 0, 0];
 
@@ -492,6 +496,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
 
   const clock = new PhaseClock(hooks, opts.durationSec, (p: PhaseIndex) => {
+    if (p === 3 && !arrived) arrive();
     const sec = p - 1;
     if (sec >= 0 && sec < 3) {
       finalPower[sec] = sectionBar(sec);
@@ -505,15 +510,49 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (p === 3) {
       window.setTimeout(() => hooks.hint("¡Tocá rápido para cargar el rayo!"), 1800);
     }
-  });
+  }, true);
   say("curioso", "¡La empresa está desconectada! Ayudame a integrarla.", 2.5);
 
-  function sAt(e: number) {
-    const D = opts.durationSec;
-    const T = [0, ...PHASES.map((p) => p.until * D)];
-    if (e >= T[3]) return SB[3] + (SB[4] - SB[3]) * Math.min(1, (e - T[3]) / 4.5);
-    for (let i = 0; i < 3; i++) if (e < T[i + 1]) return SB[i] + (SB[i + 1] - SB[i]) * ((e - T[i]) / (T[i + 1] - T[i]));
-    return SB[3];
+  /* ---------- avance ----------
+   * BGen avanza por distancia (no por reloj): a velocidad normal cada tramo dura lo
+   * nominal (25/30/25 s) y se llega a la Casa Central a los 80 s. Con turbo se llega
+   * antes y el tiempo ahorrado se convierte en puntos. El Caos dura siempre 10 s.
+   */
+  const D = opts.durationSec;
+  const T = [0, ...PHASES.map((p) => p.until * D)];
+  const BOOST = 1.7;
+  let s = 0;
+  let boost = false;
+  let boostK = 0; // 0..1 suavizado, para cámara y efectos
+  let arrived = false;
+  const baseSpeed = () => {
+    const k = Math.min(2, clock.phase);
+    return (SB[k + 1] - SB[k]) / (T[k + 1] - T[k]);
+  };
+  function arrive() {
+    if (arrived) return;
+    arrived = true;
+    s = SB[3];
+    boost = false;
+    const saved = Math.max(0, T[3] - clock.elapsed);
+    if (saved > 0.5) {
+      const g = scorer.hit(Math.round(saved) * 25, t, false);
+      const sp = project(bgen.position);
+      popups.add(sp.x, sp.y - 60, `Tiempo ahorrado +${g}`, COLORS.naranja);
+    }
+    clock.elapsed = T[3]; // el Caos dura siempre lo nominal (D − T[3] = 10 s)
+    if (clock.phase < 3) clock.setPhase(3);
+  }
+  /** Avanza por el riel; cambia de fase al cruzar cada tramo y llega a la Casa Central. */
+  function advance(dt: number) {
+    if (arrived) {
+      s = SB[3] + (SB[4] - SB[3]) * Math.min(1, (clock.elapsed - T[3]) / 4.5);
+      return;
+    }
+    boostK += ((boost ? 1 : 0) - boostK) * Math.min(1, dt * 4);
+    s += baseSpeed() * (1 + (BOOST - 1) * boostK) * dt;
+    while (clock.phase < 2 && s >= SB[clock.phase + 1]) clock.setPhase((clock.phase + 1) as PhaseIndex);
+    if (s >= SB[3]) arrive();
   }
 
   /* ---------- input ---------- */
@@ -528,6 +567,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           laneChangedAt = t;
         }
       } else if (dir === "up") jump();
+    },
+    onHold(on) {
+      if (paused || ended || clock.phase === 3) {
+        boost = false;
+        return;
+      }
+      if (on && !boost) {
+        say("concentrado");
+        if (!boostShown) {
+          boostShown = true;
+          hooks.hint("¡TURBO!");
+        }
+      }
+      boost = on;
     },
     onTap() {
       if (paused || ended) return;
@@ -554,7 +607,6 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
 
   function collide(s: number, jumpY: number) {
-    const myLane = Math.round(laneX);
     const power = t < autoUntil || t < orqUntil;
     for (const it of items) {
       if (it.done) continue;
@@ -570,7 +622,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         it.done = true;
         continue;
       }
-      const inLane = t < orqUntil || it.lanes.includes(myLane);
+      const inLane = t < orqUntil || it.lanes.some((l) => Math.abs(laneX - l) < 0.42);
       if (!inLane) continue;
       if (it.kind === "conector") {
         it.done = true;
@@ -668,12 +720,19 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     const running = !paused && clock.step(dt);
-    if (running) t += dt;
+    if (running) {
+      t += dt;
+      advance(dt);
+    }
     const e = clock.elapsed;
-    const s = sAt(e);
     const u = Math.min(0.999, s / L);
     railU.uProg.value = u;
-    railU.uTime.value = now / 1000;
+    railU.uTime.value = now / 1000 * (1 + boostK);
+    const fov = 55 + boostK * 12;
+    if (Math.abs(camera.fov - fov) > 0.05) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
 
     const p = curve.getPointAt(u);
     const tg = curve.getTangentAt(u);
@@ -790,8 +849,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       desiredPos.copy(sc.center).add(new THREE.Vector3(40, 44, 40));
       desiredLook.copy(sc.center).setY(6);
     } else {
-      desiredPos.copy(bgen.position).addScaledVector(tg, -12.5).setY(8.2 + jumpY * 0.3);
-      desiredLook.copy(bgen.position).addScaledVector(tg, 10).setY(1.8);
+      desiredPos.copy(bgen.position).addScaledVector(tg, -12.5 - boostK * 2.5).setY(8.2 + jumpY * 0.3 - boostK * 0.8);
+      desiredLook.copy(bgen.position).addScaledVector(tg, 10 + boostK * 6).setY(1.8);
     }
     const k = 1 - Math.exp(-dt * (sc || clock.phase === 3 ? 2.2 : 5));
     camPos.lerp(desiredPos, k);
@@ -821,7 +880,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       clock.paused = p;
     },
     skipTo(p) {
-      if (p > clock.phase) clock.jumpTo(p);
+      if (p <= clock.phase || arrived) return;
+      s = SB[p] + 0.01;
+      clock.elapsed = T[p];
+      if (p === 3) arrive();
+      else while (clock.phase < p) clock.setPhase((clock.phase + 1) as PhaseIndex);
     },
     destroy() {
       cancelAnimationFrame(raf);

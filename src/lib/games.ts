@@ -6,7 +6,7 @@
 
 export type GameId = "compania" | "deploy" | "central";
 
-export type Gesture = "swipe-h" | "tap" | "drag-release" | "tap-area" | "tap-fast";
+export type Gesture = "swipe-h" | "tap" | "drag-release" | "tap-area" | "tap-fast" | "hold-up";
 
 export interface GameInfo {
   id: GameId;
@@ -35,6 +35,7 @@ export const GAMES: Record<GameId, GameInfo> = {
     controls: [
       { gesture: "swipe-h", label: "Deslizá para cambiar de carril" },
       { gesture: "tap", label: "Tocá para saltar" },
+      { gesture: "hold-up", label: "Mantené y deslizá arriba: turbo" },
     ],
     metricLabel: "Compañía conectada",
     accent: "#F75D00",
