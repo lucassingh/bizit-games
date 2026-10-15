@@ -507,17 +507,19 @@ p {
   animation: pop-in 0.4s ease both;
 }
 
+/* piquito: un cuadrado rotado que tapa el borde del globo y deja solo sus dos lados exteriores en naranja */
 .bubble::after {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: calc(-9 * var(--u));
-  width: calc(16 * var(--u));
-  height: calc(16 * var(--u));
+  bottom: calc(-10 * var(--u));
+  width: calc(18 * var(--u));
+  height: calc(18 * var(--u));
   background: #fff;
   border-right: calc(2 * var(--u)) solid var(--orange);
   border-bottom: calc(2 * var(--u)) solid var(--orange);
   transform: translateX(-50%) rotate(45deg);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
 .bubble-left::after {
