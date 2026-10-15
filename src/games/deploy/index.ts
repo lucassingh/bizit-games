@@ -76,6 +76,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let abilityUsed = false;
   let lastHitSfx = -1;
   let noShotsFor = 0;
+  let lastShieldMsg = -9;
   let settleTimer = 0;
   let levelStartedAt = 0;
   let killed = 0;
@@ -222,10 +223,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         if (!m || m.dead) continue;
         let dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? (m.enemy ? 1.6 : 0.8) : 1);
         if (m.kind === "boss" && m.shield) {
-          if (minis.includes(other) || (other.plugin as { agent?: Agent }).agent === "orquestador") {
-            m.shield = false;
-            popups.add(self.position.x, self.position.y - 80, "¡ESCUDO ROTO!", COLORS.cian);
-          } else dmg *= 0.25;
+          // el Caos se alimenta de los Problemones: mientras quede alguno, no se lo puede dañar
+          if (dmg > 1 && t - lastShieldMsg > 1.5) {
+            lastShieldMsg = t;
+            popups.add(self.position.x, self.position.y - 80, "¡Primero los Problemones!", COLORS.cian);
+          }
+          continue;
         }
         m.hp -= dmg;
         if (dmg > 0.6 && t - lastHitSfx > 0.06) {
@@ -266,7 +269,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       burst(x, y, m.kind === "boss" ? 70 : 24, ["#bdb3a0", "#d9cbb0", COLORS.cian, COLORS.lima]);
       say("logro", m.kind === "boss" ? "¡Caos eliminado! Tu equipo ahora se enfoca en lo importante." : killed % 3 === 0 ? "¡Uno menos!" : undefined);
       metric();
-      if (m.kind === "boss") {
+      if (m.kind === "boss" && enemiesLeft().length === 0) {
         // fin: bonus por tiempo restante
         const bonus = Math.round(clock.left * 25);
         if (bonus > 0) {
@@ -300,7 +303,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       Body.applyForce(b, b.position, Vector.mult(Vector.normalise(d), k));
       const m = meta(b);
       if (m) {
-        m.hp -= (1 - dist / radius) * 2.2 * (m.kind === "boss" && m.shield ? 0.3 : 1);
+        if (m.kind === "boss" && m.shield) continue;
+        m.hp -= (1 - dist / radius) * 2.2;
         if (m.hp <= 0) destroy(b);
       }
     }
@@ -445,7 +449,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
   function nextLevel(reason: "clear" | "time" | "shots") {
     if (level >= 2) {
-      finishGame(1.2);
+      // el último nivel termina solo cuando cae el Caos (ver destroy); si ya cerró, nada que hacer
+      if (!ended) finishGame(1.2);
       return;
     }
     if (reason === "clear") {
@@ -499,6 +504,16 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
     const left = enemiesLeft();
     const bossOnly = level === 2 && left.length === 1 && meta(left[0])?.kind === "boss";
+    if (bossOnly) {
+      const bm = meta(left[0])!;
+      if (bm.shield) {
+        bm.shield = false;
+        sfx("g.power2");
+        popups.add(left[0].position.x, left[0].position.y - 90, "¡EL CAOS QUEDÓ EXPUESTO!", COLORS.naranja);
+        say("logro", "¡Ahora sí! Tirale con todo al Caos.");
+        Sleeping.set(left[0], false);
+      }
+    }
     if (level === 2 && clock.phase === 2 && (bossOnly || clock.elapsed >= (80 / 90) * opts.durationSec)) clock.setPhase(3);
 
     if (!ended) {
