@@ -42,12 +42,17 @@ export const SFX = {
   "g.bell": "/audio/j1/impactBell_heavy_000.ogg",
   "g.zap": "/audio/j1/zap1.ogg",
   "g.laser": "/audio/j1/laser4.ogg",
+  // Deploy BGen
+  "j2.stretch": "/audio/j2/rubber-stretch.ogg",
 } as const;
 export type SfxName = keyof typeof SFX;
 
 export const MUSIC = {
   compania: "/audio/music/compania-loop.mp3",
+  deploy: "/audio/music/deploy-loop.mp3",
 } as const;
+/** Volumen base de la música por juego (Deploy más bajo: los golpes y la goma mandan). */
+export const MUSIC_LEVEL: Record<string, number> = { compania: 0.32, deploy: 0.17 };
 
 interface AudioState {
   enabled: boolean;
@@ -120,35 +125,65 @@ export function preloadAudio(names: readonly SfxName[] = Object.keys(SFX) as Sfx
   } catch {}
 }
 
-/** Efecto corto. `rate` cambia el tono (1 = original). */
-export function sfx(name: SfxName, opts: { volume?: number; rate?: number } = {}) {
-  if (typeof window === "undefined" || !useAudio.getState().enabled) return;
+export interface SfxHandle {
+  stop(fade?: number): void;
+  rate(r: number): void;
+}
+const NOOP: SfxHandle = { stop() {}, rate() {} };
+
+/** Efecto corto. `rate` cambia el tono (1 = original). Devuelve un control para frenarlo o cambiarle el tono. */
+export function sfx(name: SfxName, opts: { volume?: number; rate?: number } = {}): SfxHandle {
+  if (typeof window === "undefined" || !useAudio.getState().enabled) return NOOP;
   try {
     const c = context();
     const out = master();
+    let src: AudioBufferSourceNode | null = null;
+    let g: GainNode | null = null;
+    let stopped = false;
+    let wantRate = opts.rate ?? 1;
     void load(SFX[name]).then((buf) => {
-      if (!buf) return;
-      const src = c.createBufferSource();
+      if (!buf || stopped) return;
+      src = c.createBufferSource();
       src.buffer = buf;
-      src.playbackRate.value = opts.rate ?? 1;
-      const g = c.createGain();
+      src.playbackRate.value = wantRate;
+      g = c.createGain();
       g.gain.value = opts.volume ?? 0.8;
       src.connect(g).connect(out);
       src.start();
     });
-  } catch {}
+    return {
+      stop(fade = 0.05) {
+        stopped = true;
+        if (!src || !g) return;
+        const s = src;
+        g.gain.setTargetAtTime(0, c.currentTime, fade / 3);
+        window.setTimeout(() => {
+          try {
+            s.stop();
+          } catch {}
+        }, fade * 1000 + 30);
+      },
+      rate(r) {
+        wantRate = r;
+        if (src) src.playbackRate.setTargetAtTime(r, c.currentTime, 0.05);
+      },
+    };
+  } catch {
+    return NOOP;
+  }
 }
 
 /* ---------- música ---------- */
 let musicSrc: AudioBufferSourceNode | null = null;
 let musicUrl = "";
-const MUSIC_VOL = 0.32;
+let MUSIC_VOL = 0.32;
 
 export const music = {
   /** Arranca (o reanuda) el loop con fundido de entrada. */
-  play(url: string, fadeIn = 1.2) {
+  play(url: string, fadeIn = 1.2, level = 0.32) {
     if (typeof window === "undefined") return;
     try {
+      MUSIC_VOL = level;
       unlock();
       const c = context();
       master();
@@ -191,5 +226,40 @@ export const music = {
         src.stop();
       } catch {}
     }, fade * 1000 + 50);
+  },
+};
+
+/* ---------- goma de la gomera: grabación al estirar (sube un poco de tono), chasquido sintetizado al soltar ---------- */
+let stretchH: SfxHandle | null = null;
+export const rubber = {
+  start() {
+    rubber.release(0);
+    stretchH = sfx("j2.stretch", { volume: 0.7, rate: 0.95 });
+  },
+  /** k = 0..1 cuánto está estirada. */
+  set(k: number) {
+    stretchH?.rate(0.95 + k * 0.25);
+  },
+  release(snap = 1) {
+    stretchH?.stop(0.08);
+    stretchH = null;
+    if (snap <= 0 || !ctx) return;
+    try {
+      const c = ctx;
+      const len = Math.floor(c.sampleRate * 0.12);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const f = c.createBiquadFilter();
+      f.type = "bandpass";
+      f.frequency.value = 700 + snap * 600;
+      f.Q.value = 1.2;
+      const g = c.createGain();
+      g.gain.value = 0.5 + snap * 0.4;
+      src.connect(f).connect(g).connect(master());
+      src.start();
+    } catch {}
   },
 };

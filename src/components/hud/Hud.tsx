@@ -181,8 +181,9 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
   if (tv) {
     return (
       <aside className={h.wrap}>
-        <TechFrame cut={24} title={g.name} notch={0.72} />
+        <TechFrame tab={0.5} />
         <div className={h.sidebar}>
+          <span className={h.title}>{g.name}</span>
           {bgenBlock}
           {scoreBlock}
           <div className={h.row2}>
@@ -197,7 +198,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
   }
   return (
     <aside className={h.wrap}>
-      <TechFrame cut={22} notch={0.26} foot={false} />
+      <TechFrame tab={0.3} />
       <div className={h.bottom}>
         {bgenBlock}
         {scoreBlock}

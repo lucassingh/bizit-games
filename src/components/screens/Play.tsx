@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
-import TechFrame, { frameInset, innerCut } from "../TechFrame";
+import TechFrame, { frameInset, innerRadius } from "../TechFrame";
 import SoundButton from "../SoundButton";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
@@ -15,7 +15,7 @@ import { syncNow } from "@/lib/leads/sync";
 import type { KioskConfig } from "@/lib/config";
 import { devGame } from "@/lib/dev";
 import { useDev } from "@/lib/devtools";
-import { MUSIC, music, sfx } from "@/lib/audio";
+import { MUSIC, MUSIC_LEVEL, music, sfx } from "@/lib/audio";
 import type { CreateGame, GameHooks, GameInstance, GameOutcome } from "@/games/types";
 import p from "./play.module.css";
 
@@ -26,7 +26,6 @@ async function loadGame(id: GameId): Promise<CreateGame> {
 }
 
 /** Pantalla de juego: escenario + HUD (lateral en TV, inferior en tablet). */
-const STAGE_CUT = 28;
 
 export default function Play({ config, layout }: { config: KioskConfig; layout: "tv" | "tablet" }) {
   const game = useSession((st) => st.game)!;
@@ -112,7 +111,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   useEffect(() => {
     const url = (MUSIC as Partial<Record<GameId, string>>)[game];
     if (!url || loading || count !== null) return;
-    music.play(url);
+    music.play(url, 1.2, MUSIC_LEVEL[game] ?? 0.32);
   }, [game, loading, count]);
   useEffect(() => () => music.stop(0.8), []);
 
@@ -132,9 +131,9 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
     <section className={`${p.play} ${layout === "tv" ? p.tv : p.tablet}`} style={accentVars(game) as React.CSSProperties}>
       <div className={p.stageWrap}>
       <div className={p.stage}>
-        <TechFrame cut={STAGE_CUT} notch={0.3} />
+        <TechFrame tab={0.5} />
         <SoundButton />
-        <div ref={hostRef} className={`${p.host} ${over ? p.hostOver : ""}`} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
+        <div ref={hostRef} className={`${p.host} ${over ? p.hostOver : ""}`} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--r": `calc(${innerRadius()} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
         {over && <GameOver outcome={over} game={game} onRetry={() => useDev.getState().restart()} />}

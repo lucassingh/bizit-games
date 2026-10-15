@@ -169,6 +169,7 @@ export function buildWorld(scene: THREE.Scene) {
     }
     grp.position.set(x, 0.4, zz);
     grp.rotation.y = rotY;
+    grp.name = `sign:${z.id}`;
     scene.add(grp);
     z.sign = { tex, draw, lit: false };
   }
@@ -205,6 +206,7 @@ export function buildWorld(scene: THREE.Scene) {
     const src = await loadModel(kit, name);
     const mat = z ? zoneMat(z, kit, src) : undefined;
     const g = instance(src, { mat, scale, x, z: zz, rotY, y });
+    g.name = `${kit}:${name}`;
     scene.add(g);
     return g;
   }
