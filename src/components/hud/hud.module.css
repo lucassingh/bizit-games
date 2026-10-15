@@ -28,7 +28,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.5fr) auto auto;
+  grid-template-columns: auto minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
   align-items: stretch;
   gap: calc(12 * var(--u));
   padding: calc(34 * var(--u)) calc(36 * var(--u)) calc(24 * var(--u));
@@ -512,8 +512,8 @@
 
 .sidebar .bgen {
   align-items: flex-start;
-  min-height: calc(80 * var(--u));
-  margin-top: calc(20 * var(--u));
+  min-height: calc(84 * var(--u));
+  margin-top: calc(4 * var(--u));
 }
 
 .say {
@@ -531,44 +531,7 @@
   display: none;
 }
 
-/* ---------- sonido on/off ---------- */
-.sound {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(5 * var(--u));
-  padding: calc(5 * var(--u)) calc(9 * var(--u)) calc(5 * var(--u)) calc(7 * var(--u));
-  border: calc(2 * var(--u)) solid var(--accent);
-  background: #fff;
-  color: var(--accent);
-  font: 800 calc(10 * var(--u)) var(--body);
-  letter-spacing: 1px;
-  cursor: pointer;
-  clip-path: polygon(calc(7 * var(--u)) 0, 100% 0, calc(100% - calc(7 * var(--u))) 100%, 0 100%);
-}
-
-.sound svg {
-  width: calc(15 * var(--u));
-  height: calc(15 * var(--u));
-  stroke-width: 2.4;
-}
-
-.soundOff {
-  border-color: #c9c0b6;
-  color: var(--muted);
-}
-
-.sidebar .sound {
-  position: absolute;
-  top: calc(34 * var(--u));
-  right: calc(28 * var(--u));
-  z-index: 2;
-}
-
-.bottom .sound {
-  align-self: center;
-}
-
-/* ---------- controles ---------- */
+/* ---------- controles: leyenda compacta ---------- */
 .controls {
   display: flex;
   gap: calc(10 * var(--u));
@@ -576,28 +539,32 @@
 
 .sidebar .controls {
   margin-top: auto;
-  flex-direction: column;
-  gap: calc(3 * var(--u));
-  padding-top: calc(8 * var(--u));
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(6 * var(--u));
+  padding-top: calc(10 * var(--u));
   border-top: calc(2 * var(--u)) dashed #e1dad2;
 }
 
 .control {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: calc(8 * var(--u));
-  font-weight: 700;
-  font-size: calc(13 * var(--u));
-  line-height: 1.2;
+  gap: calc(2 * var(--u));
+  font: 800 calc(10 * var(--u)) / 1.1 var(--body);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
 }
 
 .bottom .control span {
-  display: none;
+  font-size: calc(9 * var(--u));
 }
 
 @media (max-width: 1100px) {
   .bottom {
-    grid-template-columns: auto minmax(0, 1.2fr) auto minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    grid-template-columns: auto minmax(0, 1.2fr) auto minmax(0, 1fr) minmax(0, 1.4fr);
   }
   .bottom .nodeName {
     display: none;

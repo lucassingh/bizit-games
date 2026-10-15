@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
 import TechFrame, { frameInset, innerCut } from "../TechFrame";
+import SoundButton from "../SoundButton";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -121,6 +122,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       <div className={p.stageWrap}>
       <div className={p.stage}>
         <TechFrame cut={STAGE_CUT} notch={0.3} />
+        <SoundButton />
         <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}

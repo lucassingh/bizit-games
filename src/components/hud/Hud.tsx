@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Flame, Network, Users, Volume2, VolumeX, Zap } from "lucide-react";
+import { Flame, Network, Users, Zap } from "lucide-react";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import TechFrame from "../TechFrame";
 import { GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud } from "@/lib/store";
-import { useAudio } from "@/lib/audio";
 import h from "./hud.module.css";
 
 /**
@@ -101,17 +100,6 @@ function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac
   );
 }
 
-/** Botón de sonido on/off (recordado en el dispositivo). */
-function SoundToggle() {
-  const { enabled, toggle } = useAudio();
-  return (
-    <button className={`${h.sound} ${enabled ? "" : h.soundOff}`} onClick={toggle} data-silent aria-pressed={enabled} aria-label={enabled ? "Silenciar" : "Activar sonido"} title={enabled ? "Sonido: on" : "Sonido: off"}>
-      {enabled ? <Volume2 /> : <VolumeX />}
-      <span>{enabled ? "ON" : "OFF"}</span>
-    </button>
-  );
-}
-
 export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "tablet" }) {
   const g = GAMES[game];
   const { score, combo, phase, timeLeft, duration, metricValue, metricPct, expr, say } = useHud();
@@ -169,12 +157,13 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
     </div>
   );
 
+  // leyenda de controles: ícono + nombre corto (la explicación completa está en el briefing y al arrancar)
   const controls = (
     <div className={h.controls}>
       {g.controls.map((c) => (
-        <div key={c.label} className={h.control}>
-          <GestureIcon gesture={c.gesture} size={tv ? 40 : 36} />
-          <span>{c.label}</span>
+        <div key={c.label} className={h.control} title={c.label}>
+          <GestureIcon gesture={c.gesture} size={tv ? 44 : 36} />
+          <span>{c.short}</span>
         </div>
       ))}
     </div>
@@ -185,7 +174,6 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
       <aside className={h.wrap}>
         <TechFrame cut={24} title={g.name} notch={0.72} />
         <div className={h.sidebar}>
-          <SoundToggle />
           {bgenBlock}
           {scoreBlock}
           <div className={h.row2}>
@@ -208,7 +196,6 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
         {metricBlock}
         {phaseBlock}
         {controls}
-        <SoundToggle />
       </div>
     </aside>
   );
