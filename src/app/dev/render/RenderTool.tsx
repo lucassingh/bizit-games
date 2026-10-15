@@ -82,10 +82,15 @@ export default function RenderTool() {
         }
         const W = 3200, H = 1100;
         renderer.setSize(W, H);
-        const cam = new THREE.PerspectiveCamera(30, W / H, 1, 1000);
+        const cam = new THREE.PerspectiveCamera(31, W / H, 1, 1000);
         // vista de costado desde el sur, un poco elevada: Ventas y Operaciones adelante, Casa Central y Finanzas detrás
-        cam.position.set(0, 42, 235);
-        cam.lookAt(0, 16, -10);
+        // sin los arcos de IA (son del juego 1)
+        scene.traverse((o) => {
+          const m = o as { isMesh?: boolean; geometry?: { type: string }; visible: boolean };
+          if (m.isMesh && m.geometry?.type === "TubeGeometry") m.visible = false;
+        });
+        cam.position.set(-8, 44, 150);
+        cam.lookAt(-6, 14, -30);
         renderer.render(scene, cam);
         out.city = renderer.domElement.toDataURL("image/png");
         say("city ok");

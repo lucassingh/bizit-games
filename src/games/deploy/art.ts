@@ -22,6 +22,10 @@ function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: num
 }
 
 /* ---------- fondo ---------- */
+/** Ciudad del juego 1 (Kenney 3D) renderizada a imagen: el mismo mundo en los dos juegos. */
+export const CITY_IMG = typeof Image !== "undefined" ? new Image() : (null as unknown as HTMLImageElement);
+if (CITY_IMG) CITY_IMG.src = "/sprites/deploy/city.webp";
+
 export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number, GROUND: number) {
   // cielo
   const sky = g.createLinearGradient(0, 0, 0, GROUND);
@@ -54,6 +58,19 @@ export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number
       g.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
       g.fill();
     }
+  }
+  if (CITY_IMG && CITY_IMG.complete && CITY_IMG.naturalWidth) {
+    // la imagen (3200×1100) cubre todo el ancho; su base (lotes y calle) apoya sobre el piso del juego
+    const iw = W * 1.06, ih = iw * (CITY_IMG.naturalHeight / CITY_IMG.naturalWidth);
+    g.drawImage(CITY_IMG, -W * 0.03, GROUND - ih + 26, iw, ih);
+    // velo atmosférico: la ciudad queda "atrás" y la torre y los Problemones se leen adelante
+    const haze = g.createLinearGradient(0, GROUND - ih, 0, GROUND);
+    haze.addColorStop(0, "rgba(232,241,247,0.42)");
+    haze.addColorStop(1, "rgba(240,236,230,0.30)");
+    g.fillStyle = haze;
+    g.fillRect(-W, GROUND - ih - 10, W * 3, ih + 10);
+    drawGround(g, W, GROUND);
+    return;
   }
   // skyline lejano (azulado, plano)
   g.fillStyle = "#CFD9E3";
@@ -246,7 +263,11 @@ export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number
   car(360, COLORS.naranja);
   car(1310, "#5B6B7A");
 
-  // piso: césped, vereda y patio de asfalto con líneas de estacionamiento
+  drawGround(g, W, GROUND);
+}
+
+/** Piso: césped, vereda y patio de asfalto con líneas de estacionamiento. */
+function drawGround(g: CanvasRenderingContext2D, W: number, GROUND: number) {
   g.fillStyle = "#CDE4BE";
   g.fillRect(-W, GROUND, W * 3, 16);
   g.fillStyle = "#E7E1DA";
@@ -255,6 +276,42 @@ export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number
   g.fillRect(-W, GROUND + 30, W * 3, 200);
   g.fillStyle = "#E3B23C";
   for (let k = -W; k < W * 2; k += 160) g.fillRect(k, GROUND + 60, 70, 5);
+}
+
+/* ---------- sprites de Problemones renderizados desde los modelos 3D del juego 1 ---------- */
+interface SpriteMeta {
+  w: number;
+  h: number;
+  /** píxeles de la imagen por unidad del mundo 3D */
+  ppu: number;
+  cx: number;
+  cy: number;
+}
+const SPRITE_META: Record<string, SpriteMeta> = {
+  mail: { w: 464, h: 300, ppu: 150.57, cx: 233, cy: 149 },
+  fantasma: { w: 385, h: 470, ppu: 159.28, cx: 194, cy: 235 },
+  excel: { w: 378, h: 470, ppu: 173.32, cx: 189, cy: 236 },
+  caja: { w: 466, h: 468, ppu: 209.69, cx: 233, cy: 233 },
+  factura: { w: 283, h: 470, ppu: 150.71, cx: 142, cy: 235 },
+  botella: { w: 470, h: 144, ppu: 57.36, cx: 235, cy: 72 },
+};
+const SPRITES: Record<string, HTMLImageElement> = {};
+if (typeof Image !== "undefined")
+  for (const n of Object.keys(SPRITE_META)) {
+    const im = new Image();
+    im.src = `/sprites/deploy/${n}.png`;
+    SPRITES[n] = im;
+  }
+/** Qué sprite usa cada Problemón del juego 2 (el jefe se dibuja a mano). */
+const ENEMY_SPRITE: Partial<Record<EnemyKind, string>> = { mail: "mail", fantasma: "fantasma", excel: "excel", factura: "factura", reporte: "caja" };
+
+/** Dibuja el sprite centrado, escalado para que su lado mayor mida ~2.5·r. Devuelve false si todavía no cargó. */
+function drawSprite(ctx: CanvasRenderingContext2D, name: string, r: number) {
+  const im = SPRITES[name], m = SPRITE_META[name];
+  if (!im || !m || !im.complete || !im.naturalWidth) return false;
+  const k = (r * 2.5) / Math.max(m.w, m.h);
+  ctx.drawImage(im, -m.cx * k, -m.cy * k, m.w * k, m.h * k);
+  return true;
 }
 
 /* ---------- gomera ---------- */
@@ -476,6 +533,11 @@ function face(ctx: CanvasRenderingContext2D, mood: Mood, r: number, t: number, p
 export function drawEnemySprite(ctx: CanvasRenderingContext2D, kind: EnemyKind, r: number, t: number, phase: number) {
   ctx.save();
   ctx.lineJoin = "round";
+  const spr = ENEMY_SPRITE[kind];
+  if (spr && drawSprite(ctx, spr, r)) {
+    ctx.restore();
+    return;
+  }
   const outline = () => {
     ctx.lineWidth = Math.max(2.5, r * 0.1);
     ctx.strokeStyle = INK;

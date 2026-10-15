@@ -7,7 +7,7 @@ import { COLORS } from "@/lib/brand";
 import { Cable, Coins, Crown, Radio, type IconNode } from "lucide";
 import { drawIcon } from "../shared/icons";
 import { music, rubber, sfx } from "@/lib/audio";
-import { drawBackground, drawBands, drawEnemySprite, drawPlaque, drawSlingshot, type EnemyKind } from "./art";
+import { CITY_IMG, drawBackground, drawBands, drawEnemySprite, drawPlaque, drawSlingshot, type EnemyKind } from "./art";
 
 /**
  * Juego 2 · Deploy BGen — "Derribá el Caos" (docs/04).
@@ -607,7 +607,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let bg: HTMLCanvasElement | null = null;
   let bgKey = "";
   function background(v: ReturnType<typeof view>) {
-    const key = `${state.w}x${state.h}@${state.dpr}`;
+    const key = `${state.w}x${state.h}@${state.dpr}:${CITY_IMG?.complete && CITY_IMG.naturalWidth ? 1 : 0}`;
     if (bg && bgKey === key) return bg;
     bgKey = key;
     bg = document.createElement("canvas");
