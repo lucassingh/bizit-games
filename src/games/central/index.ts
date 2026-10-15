@@ -23,9 +23,11 @@ import { drawBoard, drawDesk, drawOfficeStatic } from "./office";
  */
 
 const W = 1600, H = 700;
-const FLOOR = 560;
-const BY = FLOOR - 118; // altura de BGen
-const R = 36;
+const FLOOR = 590;
+const BY = FLOOR + 58; // BGen en el piso, delante de los escritorios
+const R = 40;
+const BOLT_SPEED = 1100;
+const FIRE_EVERY = 0.32;
 
 type Drop = {
   kind: EnemyKind | "vip" | "bomb" | "team" | "orq";
@@ -39,6 +41,12 @@ type Drop = {
   /** 0..1 animación de "absorbido" */
   got?: number;
 };
+
+interface Bolt {
+  x: number;
+  y: number;
+  dead?: boolean;
+}
 
 interface Spark {
   x: number;
@@ -86,6 +94,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let outroT = -1;
   const drops: Drop[] = [];
   const sparks: Spark[] = [];
+  const bolts: Bolt[] = [];
+  let holding = false;
+  let fireIn = 0;
   const deskMood = DESKS.map(() => 0.2);
   const deskShake = DESKS.map(() => 0);
   let powerSpawned = [false, false];
@@ -112,7 +123,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   });
   hooks.lives(lives);
   hooks.metric("0%", 0);
-  say("curioso", "¡La bandeja está desbordada! Arrastrame y atrapo las tareas.", 3);
+  say("curioso", "¡Llueven tareas! Movéme y disparo para automatizarlas.", 3);
 
   /* ---------- input ---------- */
   const toWorld = (px: number) => {
@@ -123,25 +134,34 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     onDragStart(x) {
       if (paused || ended) return false;
       targetX = toWorld(x);
+      holding = true;
+      fireIn = 0;
       return true;
     },
     onDragMove(x) {
       targetX = toWorld(x);
     },
-    onDragEnd() {},
+    onDragEnd() {
+      holding = false;
+    },
     onTap(x) {
       if (paused || ended) return;
-      if (clock.phase === 3 && !beamFired) {
-        charge++;
-        sfx("g.tap", { volume: 0.4, rate: 0.9 + Math.min(1, charge * 0.02) });
-      }
+      holding = false;
       targetX = toWorld(x);
+      fire();
     },
     onSwipe(dir) {
       if (dir === "left") targetX = Math.max(120, targetX - 220);
       if (dir === "right") targetX = Math.min(W - 120, targetX + 220);
     },
   });
+
+  function fire() {
+    if (ended || beamFired) return;
+    bolts.push({ x: bx, y: BY - R });
+    sfx("g.laser", { volume: 0.25, rate: 1.4 + Math.random() * 0.2 });
+    if (clock.phase === 3) charge++;
+  }
 
   /* ---------- mundo ---------- */
   function spawn(kind?: Drop["kind"]) {
@@ -192,7 +212,6 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
 
   const metricPct = () => (total ? Math.min(1, caught / total) : 0);
-  const halfW = () => (t < wideUntil ? R * 2.6 : R * 1.5);
 
   /* ---------- simulación ---------- */
   function update(dt: number) {
@@ -203,6 +222,21 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     // BGen sigue el dedo con suavidad
     const tx = Math.max(120, Math.min(W - 120, targetX));
     bx += (tx - bx) * Math.min(1, dt * 14);
+    // disparo automático mientras se mantiene apretado (más rápido con el equipo)
+    if (holding) {
+      fireIn -= dt;
+      if (fireIn <= 0) {
+        fire();
+        if (t < wideUntil) {
+          bolts.push({ x: bx - 46, y: BY - R * 0.6 }, { x: bx + 46, y: BY - R * 0.6 });
+        }
+        fireIn = FIRE_EVERY;
+      }
+    }
+    for (const b of bolts) {
+      b.y -= BOLT_SPEED * dt;
+      if (b.y < -40) b.dead = true;
+    }
 
     // caída de tareas
     spawnIn -= dt;
@@ -235,24 +269,35 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
       d.y += d.vy * dt;
       d.rot += d.vr * dt;
-      // ¿lo atrapa BGen?
-      const catchY = BY - R * 0.6;
-      const inX = Math.abs(d.x - bx) < halfW() + d.r * 0.5;
-      const inY = d.y + d.r > catchY - 10 && d.y - d.r < BY + R;
-      if ((inX && inY) || (orq && d.y > catchY - 160 && d.kind !== "bomb")) {
+      // ¿le pegó un disparo? (en modo orquestador todo lo que entra en escena se automatiza solo)
+      let shot = orq && d.kind !== "bomb" && d.y > 60;
+      if (!shot)
+        for (const b of bolts) {
+          if (b.dead) continue;
+          if (Math.abs(b.x - d.x) < d.r + 8 && Math.abs(b.y - d.y) < d.r + 14) {
+            b.dead = true;
+            shot = true;
+            break;
+          }
+        }
+      if (shot) {
         if (d.kind === "bomb") {
           d.dead = true;
           burst(d.x, d.y, 26, [COLORS.rojo, "#fff", "#444"]);
-          popups.add(d.x, d.y - 40, "¡DELETE! Eso no se toca", COLORS.rojo);
+          scorer.miss();
+          scorer.score = Math.max(0, scorer.score - 150);
+          hooks.score(scorer.score, 1);
+          popups.add(d.x, d.y - 40, "¡DELETE! −150", COLORS.rojo);
           sfx("g.fail", { volume: 0.9, rate: 1.4 });
-          loseLife("¡Ese era un DELETE!", nearestDesk(d.x));
+          shake = 0.6;
+          say("mareado", "¡Ese era un DELETE! No se toca.", 1.2);
           continue;
         }
         if (d.kind === "team") {
           d.dead = true;
           wideUntil = t + 6;
           sfx("g.power");
-          say("logro", "¡Equipo de agentes! Ahora atrapo más ancho.", 3);
+          say("logro", "¡Equipo de agentes! Disparo triple.", 3);
           hooks.hint("EQUIPO DE AGENTES");
           burst(d.x, d.y, 24, [COLORS.cian, COLORS.lima, "#fff"]);
           continue;
@@ -291,6 +336,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     for (let i = drops.length - 1; i >= 0; i--) if (drops[i].dead) drops.splice(i, 1);
+    for (let i = bolts.length - 1; i >= 0; i--) if (bolts[i].dead) bolts.splice(i, 1);
 
     // el ánimo de los escritorios mejora con lo automatizado
     const goal = Math.min(1, 0.2 + metricPct() * 0.9);
@@ -492,52 +538,40 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     // tareas que caen
     for (const d of drops) drawDrop(d);
 
-    // BGen: bandeja (barra) + BGen encima; se ensancha con el power-up
-    const hw = halfW();
-    const wide = t < wideUntil;
-    ctx.save();
-    ctx.translate(bx, BY);
-    // bandeja
-    ctx.fillStyle = COLORS.carbon;
-    ctx.beginPath();
-    ctx.roundRect(-hw - 6, R * 0.55, hw * 2 + 12, 22, 8);
-    ctx.fill();
-    ctx.fillStyle = wide ? COLORS.cian : "#fff";
-    ctx.beginPath();
-    ctx.roundRect(-hw, R * 0.55 + 4, hw * 2, 14, 6);
-    ctx.fill();
-    // campo de captura (zona donde "entra" la tarea)
-    const fg = ctx.createLinearGradient(0, -R * 2.2, 0, R * 0.6);
-    fg.addColorStop(0, "rgba(10,182,188,0)");
-    fg.addColorStop(1, t < orqUntil ? "rgba(247,93,0,0.35)" : "rgba(10,182,188,0.28)");
-    ctx.fillStyle = fg;
-    ctx.beginPath();
-    ctx.moveTo(-hw * 0.7, -R * 2.2);
-    ctx.lineTo(hw * 0.7, -R * 2.2);
-    ctx.lineTo(hw, R * 0.6);
-    ctx.lineTo(-hw, R * 0.6);
-    ctx.closePath();
-    ctx.fill();
-    // ruedas
-    ctx.fillStyle = COLORS.carbon;
-    for (const sx of [-1, 1]) {
+    // disparos
+    for (const b of bolts) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.shadowColor = COLORS.cian;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = COLORS.lima;
       ctx.beginPath();
-      ctx.arc(sx * (hw - 10), R * 0.55 + 28, 9, 0, Math.PI * 2);
+      ctx.roundRect(-5, -22, 10, 44, 5);
       ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.roundRect(-2, -16, 4, 24, 2);
+      ctx.fill();
+      ctx.restore();
     }
-    ctx.restore();
+
+    // BGen en el piso, con sombra y los dos agentes del equipo cuando está activo
+    const wide = t < wideUntil;
     const vis = !(t < invulnUntil && Math.floor(t * 12) % 2 === 0);
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.beginPath();
+    ctx.ellipse(bx, BY + R * 0.95, R * 1.1, R * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
     if (vis) {
       const lean = Math.max(-0.25, Math.min(0.25, (targetX - bx) / 600));
+      const bob = Math.sin(t * 6) * (Math.abs(targetX - bx) > 8 ? 3 : 1);
       ctx.save();
-      ctx.translate(bx, BY - R * 0.2);
+      ctx.translate(bx, BY + bob);
       ctx.rotate(lean);
-      drawBGen(ctx, 0, 0, R * 2.3, { expr, t, blink: blink(t), gx: lean * 20, gy: -2, talk: 0 }, t < orqUntil || wide ? 1 : clock.phase >= 1 ? 0.4 : 0);
+      drawBGen(ctx, 0, 0, R * 2.3, { expr, t, blink: blink(t), gx: lean * 20, gy: -3, talk: 0 }, t < orqUntil || wide ? 1 : clock.phase >= 1 ? 0.4 : 0);
       ctx.restore();
-      if (wide) {
-        // dos agentes a los costados (equipo)
-        for (const sx of [-1, 1]) drawBGen(ctx, bx + sx * (hw - R * 0.9), BY + 4, R * 1.5, { expr: "procesando", t, blink: blink(t + sx), gx: 0, gy: 0, talk: 0 }, 0.6);
-      }
+      if (wide)
+        for (const sx of [-1, 1]) drawBGen(ctx, bx + sx * 56, BY + 12, R * 1.5, { expr: "procesando", t, blink: blink(t + sx), gx: 0, gy: -3, talk: 0 }, 0.6);
     }
 
     // relámpago final
