@@ -86,7 +86,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let lives = 3;
   let invulnUntil = 0;
   let shake = 0;
-  let wideUntil = 0, orqUntil = 0;
+  let wideUntil = 0, orqUntil = 0, orqWas = false;
   let spawnIn = 1.2;
   let caught = 0, dropped = 0, total = 0;
   let charge = 0;
@@ -257,16 +257,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       spawn();
       spawnIn = PHASE_EVERY[p] * (0.8 + rand() * 0.4);
     }
-    // power-ups: el Equipo (disparo triple) se activa solo al entrar a Foundation y dura toda la fase;
-    // el Orquestador cae al principio de Evolution y de nuevo a la mitad
-    if (p === 1 && !powerSpawned[0]) {
+    // power-ups acumulativos: el Equipo (disparo triple) llega al entrar a Foundation y se queda
+    // hasta el final; el Orquestador (abanico, 7 s) cae al principio de Evolution y de nuevo a la mitad
+    if (p >= 1 && !powerSpawned[0]) {
       powerSpawned[0] = true;
-      wideUntil = clock.elapsed + 999; // se corta al entrar a Evolution
+      wideUntil = Infinity;
       sfx("g.power");
       hooks.hint("EQUIPO DE AGENTES: DISPARO TRIPLE");
       burst(bx, BY - R, 24, [COLORS.cian, COLORS.lima, "#fff"]);
     }
-    if (p >= 2 && wideUntil > 900) wideUntil = t + 1.5;
+    if (orqWas && t >= orqUntil) {
+      orqWas = false;
+      hooks.hint("ORQUESTADOR TERMINADO · SEGUÍS CON TRIPLE");
+      sfx("g.down", { volume: 0.5 });
+    }
     if (p === 2 && !powerSpawned[1] && clock.phaseProgress() > 0.05) {
       powerSpawned[1] = true;
       spawn("orq");
@@ -317,7 +321,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         }
         if (d.kind === "team") {
           d.dead = true;
-          wideUntil = t + 6;
+          wideUntil = Infinity;
           sfx("g.power");
           say("logro", "¡Equipo de agentes! Disparo triple.", 3);
           hooks.hint("EQUIPO DE AGENTES");
@@ -327,6 +331,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         if (d.kind === "orq") {
           d.dead = true;
           orqUntil = t + 7;
+          orqWas = true;
           sfx("g.power2");
           say("logro", "¡Modo orquestador! Multitiro y todo se automatiza.", 3);
           hooks.hint("ORQUESTADOR");
@@ -641,7 +646,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     skipTo(p) {
       if (p <= clock.phase) return;
       clock.jumpTo(p);
-      powerSpawned = [p > 1, p > 2, p > 2];
+      powerSpawned = [false, p > 2, p > 2]; // el Equipo se entrega igual al entrar a Foundation
     },
     destroy() {
       cancelAnimationFrame(raf);
