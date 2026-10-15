@@ -32,7 +32,7 @@ interface Item {
 
 const LANE_W = 3.2;
 const ZONE_ORDER: ZoneId[] = ["ventas", "operaciones", "finanzas", "hq"];
-const ZONE_NAME: Record<ZoneId, string> = { ventas: "Ventas", operaciones: "Operaciones", finanzas: "Finanzas", hq: "HQ Bizit" };
+const ZONE_NAME: Record<ZoneId, string> = { ventas: "Ventas", operaciones: "Operaciones", finanzas: "Finanzas", hq: "Casa Central" };
 
 const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   /* ---------- render ---------- */
@@ -339,7 +339,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     }
   }
 
-  /* ---------- El Caos Operativo: torbellino de papeles sobre el HQ ---------- */
+  /* ---------- El Caos Operativo: torbellino de papeles sobre la Casa Central ---------- */
   const PAPERS = 140;
   const paperMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.2, 0.9), new THREE.MeshStandardMaterial({ color: "#C9C1B4", side: THREE.DoubleSide, transparent: true }), PAPERS);
   const paperSeed = Array.from({ length: PAPERS }, () => ({ a: Math.random() * 6.28, h: Math.random(), r: 10 + Math.random() * 9, s: 0.5 + Math.random() }));
@@ -348,7 +348,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   scene.add(beam);
   const smoke = Array.from({ length: 14 }, (_, i) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: "#ffffff", transparent: true, opacity: 0 }));
-    m.userData = { x: i % 2 ? 36 : 40, z: i % 2 ? 22 : 26, base: i % 2 ? 24 : 22, k: (i / 14) * 1 };
+    m.userData = { x: i % 2 ? 20 : 25, z: i % 2 ? 22 : 24, base: i % 2 ? 17 : 15, k: (i / 14) * 1 };
     scene.add(m);
     return m;
   });
