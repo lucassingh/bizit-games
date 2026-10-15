@@ -1,4 +1,4 @@
-import { PHASES, phaseAt, type PhaseIndex } from "@/lib/games";
+import { PHASES, phaseAt, phaseStart, type PhaseIndex } from "@/lib/games";
 import { nextCombo } from "@/lib/scoring";
 import type { GameHooks } from "../types";
 
@@ -41,6 +41,14 @@ export class PhaseClock {
     this.hooks.phase(p);
     this.hooks.banner(PHASES[p].title, p < 3 ? `Plan ${PHASES[p].name}` : "Último desafío");
     this.onPhase?.(p);
+  }
+
+  /** Modo desarrollo: salta al comienzo de la fase `p`, pasando por las intermedias (sus efectos se aplican). */
+  jumpTo(p: PhaseIndex) {
+    this.elapsed = phaseStart(p, this.duration);
+    this.lastEmit = -1;
+    for (let i = (this.phase + 1) as PhaseIndex; i <= p; i++) this.setPhase(i as PhaseIndex);
+    this.hooks.time(this.left);
   }
 
   /** Termina antes de tiempo (por ejemplo, si se derrotó al jefe). */

@@ -42,3 +42,4 @@ next-env.d.ts
 
 # ejemplo de variables (sí se versiona)
 !.env.example
+!.env.development

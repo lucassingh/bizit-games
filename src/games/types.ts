@@ -35,6 +35,8 @@ export interface GameInstance {
   destroy(): void;
   /** Para pruebas y para la pantalla de configuración. */
   pause?(paused: boolean): void;
+  /** Modo desarrollo: salta al comienzo de una fase (si el juego lo permite). */
+  skipTo?(phase: PhaseIndex): void;
 }
 
 export type CreateGame = (host: HTMLElement, hooks: GameHooks, opts: GameOptions) => GameInstance;

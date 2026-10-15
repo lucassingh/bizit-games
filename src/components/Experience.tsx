@@ -13,6 +13,9 @@ import Briefing from "./screens/Briefing";
 import Play from "./screens/Play";
 import Result from "./screens/Result";
 import ConnectionBadge from "./ConnectionBadge";
+import DevBar from "./DevBar";
+import { devGame } from "@/lib/dev";
+import { useDev } from "@/lib/devtools";
 
 /** Tiempo sin tocar nada antes de volver a la pantalla de inicio. */
 const IDLE_MS: Record<string, number> = { register: 90000, select: 45000, briefing: 45000, result: 30000 };
@@ -27,6 +30,20 @@ export default function Experience() {
   const screen = useSession((s) => s.screen);
   const [config, setConfig] = useState<KioskConfig | null>(null);
   const [layout, setLayout] = useState<"tv" | "tablet">("tablet");
+  const [dev, setDev] = useState<ReturnType<typeof devGame>>(null);
+  const run = useDev((d) => d.run);
+
+  // modo desarrollo: directo al juego, sin registro ni selector (ver lib/dev.ts)
+  useEffect(() => {
+    const d = devGame();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- depende de la URL (solo cliente)
+    setDev(d);
+    if (!d) return;
+    if (screen !== "play" && screen !== "result") {
+      useSession.getState().chooseGame(d);
+      useSession.getState().go("play");
+    }
+  }, [screen]);
 
   // configuración del kiosco + sincronización de leads
   useEffect(() => {
@@ -55,10 +72,10 @@ export default function Experience() {
     return () => window.clearTimeout(t);
   }, [screen]);
 
-  // vuelta al inicio por inactividad
+  // vuelta al inicio por inactividad (no en modo desarrollo)
   useEffect(() => {
     const ms = IDLE_MS[screen];
-    if (!ms) return;
+    if (!ms || devGame()) return;
     let t = window.setTimeout(abandon, ms);
     const bump = () => {
       window.clearTimeout(t);
@@ -80,9 +97,10 @@ export default function Experience() {
       {(screen === "register" || screen === "select") && <Register config={config} />}
       {screen === "select" && <GameSelect config={config} />}
       {screen === "briefing" && <Briefing layout={layout} durationSec={config.durationSec} />}
-      {screen === "play" && <Play config={config} layout={layout} />}
+      {screen === "play" && <Play key={run} config={config} layout={layout} />}
       {screen === "result" && <Result />}
       <ConnectionBadge />
+      {dev && <DevBar game={dev} />}
     </main>
   );
 }

@@ -820,6 +820,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       paused = p;
       clock.paused = p;
     },
+    skipTo(p) {
+      if (p > clock.phase) clock.jumpTo(p);
+    },
     destroy() {
       cancelAnimationFrame(raf);
       unbind();

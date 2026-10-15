@@ -1,0 +1,123 @@
+/* Barra de desarrollo: oscura y chica, pegada abajo a la izquierda, fuera del lenguaje del juego a propósito. */
+.bar {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #16181d;
+  color: #e9e6e1;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  font: 600 12px/1 var(--body);
+  user-select: none;
+}
+
+.tag {
+  font: 800 10px var(--mono);
+  letter-spacing: 1.5px;
+  color: #b2f326;
+  padding: 0 4px;
+}
+
+.games,
+.phases {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.phases > svg {
+  width: 14px;
+  height: 14px;
+  color: #8e949e;
+  margin-right: 2px;
+}
+
+.sep {
+  width: 1px;
+  height: 20px;
+  background: #343841;
+  margin: 0 4px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #272b33;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn:hover:not(:disabled) {
+  background: #343941;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn.on {
+  background: #b2f326;
+  color: #131315;
+}
+
+.main {
+  min-width: 112px;
+  justify-content: center;
+  background: #f75d00;
+  color: #fff;
+}
+
+.main:hover:not(:disabled) {
+  background: #ff7a2a;
+}
+
+.small {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #8e949e;
+  font: 500 11px var(--mono);
+  padding: 0 4px;
+}
+
+.hint svg {
+  width: 13px;
+  height: 13px;
+}
+
+.peek {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  z-index: 1000;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(22, 24, 29, 0.55);
+  color: #b2f326;
+  font: 800 10px var(--mono);
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  opacity: 0.6;
+}

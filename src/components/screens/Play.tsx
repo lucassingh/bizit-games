@@ -11,6 +11,8 @@ import { addEntry, displayName, todayEntries } from "@/lib/ranking";
 import { putLead } from "@/lib/leads/queue";
 import { syncNow } from "@/lib/leads/sync";
 import type { KioskConfig } from "@/lib/config";
+import { devGame } from "@/lib/dev";
+import { useDev } from "@/lib/devtools";
 import type { CreateGame, GameHooks, GameInstance, GameOutcome } from "@/games/types";
 import p from "./play.module.css";
 
@@ -26,7 +28,9 @@ const STAGE_CUT = 28;
 export default function Play({ config, layout }: { config: KioskConfig; layout: "tv" | "tablet" }) {
   const game = useSession((st) => st.game)!;
   const hostRef = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState<number | null>(3);
+  // en modo desarrollo no hay cuenta regresiva: el juego queda cargado y arranca con "Comenzar"
+  const dev = devGame() !== null;
+  const [count, setCount] = useState<number | null>(dev ? null : 3);
   const [banner, setBanner] = useState<{ title: string; subtitle: string; id: number } | null>(null);
   const [hint, setHint] = useState<{ text: string; id: number } | null>(null);
   const [showGestures, setShowGestures] = useState(true);
@@ -59,12 +63,14 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
         layout,
       });
       instRef.current.pause?.(true);
+      if (dev) useDev.getState().register(instRef.current);
       setLoading(false);
     });
     return () => {
       disposed = true;
       instRef.current?.destroy();
       instRef.current = null;
+      if (dev) useDev.getState().register(null);
     };
     // el layout cambia solo si se rota/redimensiona: el juego se adapta solo
     // eslint-disable-next-line react-hooks/exhaustive-deps
