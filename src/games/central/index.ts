@@ -96,7 +96,6 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const drops: Drop[] = [];
   const sparks: Spark[] = [];
   const bolts: Bolt[] = [];
-  let holding = false;
   let fireIn = 0;
   const deskMood = TEAM.map(() => 0.2);
   const deskShake = TEAM.map(() => 0);
@@ -125,7 +124,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   });
   hooks.lives(lives);
   hooks.metric("0%", 0);
-  say("curioso", "¡Llueven tareas! Movéme y disparo para automatizarlas.", 3);
+  say("curioso", "¡Llueven tareas! Movéme: disparo solo y las automatizo.", 3);
 
   /* ---------- input ---------- */
   const toWorld = (px: number) => {
@@ -136,7 +135,6 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     onDragStart(x) {
       if (paused || ended) return false;
       targetX = toWorld(x);
-      holding = true;
       fireIn = 0;
       return true;
     },
@@ -144,11 +142,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       targetX = toWorld(x);
     },
     onDragEnd() {
-      holding = false;
     },
     onTap(x) {
       if (paused || ended) return;
-      holding = false;
       targetX = toWorld(x);
       fire();
     },
@@ -236,8 +232,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     // BGen sigue el dedo con suavidad
     const tx = Math.max(120, Math.min(W - 120, targetX));
     bx += (tx - bx) * Math.min(1, dt * 14);
-    // disparo automático mientras se mantiene apretado (más rápido con el equipo)
-    if (holding) {
+    // disparo automático continuo (en la tablet alcanza con mover a BGen); tocar suma tiros extra
+    if (!ended && !beamFired) {
       fireIn -= dt;
       if (fireIn <= 0) {
         fire();

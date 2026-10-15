@@ -62,10 +62,10 @@ export const GAMES: Record<GameId, GameInfo> = {
     name: "Bandeja BGen",
     tagline: "De manual a automático: atrapá las tareas antes de que desborden al equipo.",
     mission: "automatizar la empresa",
-    howTo: "Las tareas caen sobre los escritorios. Movés a BGen arrastrando y, mientras tocás, dispara solo: automatizá cada tarea antes de que llegue al equipo. Los documentos dorados valen triple; los DELETE no se tocan.",
+    howTo: "Las tareas caen sobre los escritorios. Movés a BGen arrastrando el dedo y dispara solo, todo el tiempo: automatizá cada tarea antes de que llegue al equipo. Los documentos dorados valen triple; los DELETE no se tocan.",
     steps: ["Atrapá en Ventas", "Sumá tu equipo en Operaciones", "Elegí lo importante en Finanzas y frená el Caos"],
     controls: [
-      { gesture: "swipe-h", label: "Mantené y arrastrá: BGen se mueve y dispara", short: "Mover" },
+      { gesture: "swipe-h", label: "Arrastrá el dedo: BGen te sigue y dispara solo", short: "Mover" },
       { gesture: "tap-fast", label: "Al final: tocá rápido y cargá el rayo", short: "Rayo" },
     ],
     metricLabel: "Tareas automatizadas",
