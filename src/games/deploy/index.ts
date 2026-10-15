@@ -221,7 +221,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       ] as const) {
         const m = meta(self);
         if (!m || m.dead) continue;
-        let dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? (m.enemy ? 1.6 : 0.8) : 1);
+        const dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? (m.enemy ? 1.6 : 0.8) : 1);
         if (m.kind === "boss" && m.shield) {
           // el Caos se alimenta de los Problemones: mientras quede alguno, no se lo puede dañar
           if (dmg > 1 && t - lastShieldMsg > 1.5) {
@@ -478,7 +478,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   totalEnemies = 3 + 4 + 4;
   buildLevel(0);
   metric();
-  say("curioso", "¡Hora de hacer un deploy! Arrastrá hacia atrás y soltá.");
+  say("curioso", "¡A derribar la torre! Arrastrá hacia atrás y soltá.");
 
   /* ---------- simulación ---------- */
   const LEVEL_END = [25, 55, opts.durationSec];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Flame, Heart, Network, Users, Zap } from "lucide-react";
+import { Heart, Network, Users, Zap } from "lucide-react";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import TechFrame from "../TechFrame";
@@ -16,7 +16,7 @@ import h from "./hud.module.css";
  * Barra lateral en TV y barra inferior en tablet.
  */
 
-const PHASE_ICONS = [Zap, Users, Network, Flame];
+const PHASE_ICONS = [Zap, Users, Network];
 
 /** Puntaje: los dígitos "saltan" en cada suma y el delta sube flotando. */
 function Score({ value }: { value: number }) {
@@ -67,11 +67,12 @@ function TimeRing({ timeLeft, duration, size }: { timeLeft: number; duration: nu
   );
 }
 
-/** Mapa de fases: nodos conectados; el tramo actual se llena con el tiempo. */
+/** Niveles de agentes (Drive, Foundation, Evolution): nodos conectados; el tramo actual se llena con el tiempo. */
+const LEVELS = PHASES.slice(0, 3);
 function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac: number; vertical: boolean }) {
   return (
     <ol className={`${h.map} ${vertical ? h.mapV : h.mapH}`}>
-      {PHASES.map((p, i) => {
+      {LEVELS.map((p, i) => {
         const Icon = PHASE_ICONS[i];
         // el tramo que llega a este nodo: lleno si ya pasamos, parcial (por tiempo) si es el próximo
         const prev = PHASES[i - 1];
@@ -80,7 +81,7 @@ function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac
         const link = i <= phase ? 1 : i === phase + 1 ? partial : 0;
         const state = i < phase ? h.done : i === phase ? h.now : "";
         return (
-          <li key={p.key} className={`${state} ${i === 3 ? h.caos : ""}`}>
+          <li key={p.key} className={state}>
             {i > 0 && (
               <span className={h.link} aria-hidden="true">
                 <i style={{ transform: vertical ? `scaleY(${link})` : `scaleX(${link})` }} />
