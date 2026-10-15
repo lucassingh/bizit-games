@@ -16,6 +16,7 @@ import ConnectionBadge from "./ConnectionBadge";
 import DevBar from "./DevBar";
 import { devGame } from "@/lib/dev";
 import { useDev } from "@/lib/devtools";
+import { preloadAudio, sfx, unlock } from "@/lib/audio";
 
 /** Tiempo sin tocar nada antes de volver a la pantalla de inicio. */
 const IDLE_MS: Record<string, number> = { register: 90000, select: 45000, briefing: 45000, result: 30000 };
@@ -60,6 +61,25 @@ export default function Experience() {
   useEffect(() => {
     document.documentElement.dataset.layout = layout;
   }, [layout]);
+
+  // audio: el contexto se habilita con el primer gesto; clic genérico en botones y chips
+  useEffect(() => {
+    const first = () => {
+      unlock();
+      preloadAudio();
+    };
+    addEventListener("pointerdown", first, { once: true });
+    const click = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement).closest("button");
+      if (!el || el.closest("[data-silent]")) return;
+      sfx(el.classList.contains("chip") ? "ui.select" : "ui.click", { volume: 0.5 });
+    };
+    addEventListener("click", click);
+    return () => {
+      removeEventListener("pointerdown", first);
+      removeEventListener("click", click);
+    };
+  }, []);
 
   // precarga de los juegos en segundo plano (para que funcionen sin red)
   useEffect(() => {

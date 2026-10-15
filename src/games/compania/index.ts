@@ -6,6 +6,7 @@ import { bindGestures, PhaseClock, Popups, rng, Scorer } from "../shared/engine"
 import { faceShapes, makeBlinker } from "../shared/bgenFace";
 import { COLORS, DECAGON_PATH, MARK_POLYS, BGEN_FACE } from "@/lib/brand";
 import { buildWorld, type ZoneId } from "./world";
+import { sfx } from "@/lib/audio";
 import { makeProblemon, type Kind, type Problemon } from "./problemones";
 
 /**
@@ -400,6 +401,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       showcase = { zone: ZONE_ORDER[sec], until: t + 2 };
       const pts = Math.round(finalPower[sec] * 500);
       scorer.hit(pts, t, false);
+      sfx("g.phase");
       say("logro", `¡${ZONE_NAME[ZONE_ORDER[sec]]} integrada al ${Math.round(finalPower[sec] * 100)}%!`, 2);
     }
     if (p === 3) {
@@ -429,6 +431,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     arrived = true;
     s = SB[3];
     boost = false;
+    sfx("g.win", { volume: 0.7 });
     const saved = Math.max(0, T[3] - clock.elapsed);
     if (saved > 0.5) {
       const g = scorer.hit(Math.round(saved) * 25, t, false);
@@ -469,6 +472,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         return;
       }
       if (on && !boost) {
+        sfx("g.zap", { volume: 0.5 });
         say("concentrado");
         if (!boostShown) {
           boostShown = true;
@@ -482,6 +486,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (clock.phase === 3) {
         if (!beamFired) {
           charge++;
+          sfx("g.tap", { volume: 0.5, rate: 0.8 + Math.min(1.2, charge * 0.02) });
           scorer.hit(20, t);
           say("concentrado");
         }
@@ -491,7 +496,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     },
   });
   function jump() {
-    if (t - jumpT > 0.62) jumpT = t;
+    if (t - jumpT > 0.62) {
+      jumpT = t;
+      sfx("g.jump", { volume: 0.45 });
+    }
   }
 
   /* ---------- colisiones ---------- */
@@ -511,6 +519,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         // ya pasó: ¿por poco?
         if (it.kind !== "conector" && it.kind !== "auto" && it.kind !== "orq" && it.lanes.includes(prevLane) && t - laneChangedAt < 0.5) {
           const g = scorer.hit(50, t);
+          sfx("g.near", { volume: 0.5 });
           const sp = project(bgen.position);
           popups.add(sp.x, sp.y - 40, `¡Por poco! +${g}`, COLORS.violeta);
         }
@@ -524,11 +533,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         it.obj.visible = false;
         conGot[it.sec]++;
         scorer.hit(10, t);
+        sfx(`g.coin${Math.min(4, scorer.combo)}` as "g.coin1", { volume: 0.55 });
         continue;
       }
       if (it.kind === "auto" || it.kind === "orq") {
         it.done = true;
         it.obj.visible = false;
+        sfx(it.kind === "auto" ? "g.power" : "g.power2");
         if (it.kind === "auto") {
           autoUntil = t + 4;
           say("procesando", "¡Automatización! Atravieso todo.", 4);
@@ -543,6 +554,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (power) {
         it.done = true;
         it.obj.visible = false;
+        sfx("g.bell", { volume: 0.4, rate: 1.4 });
         const g = scorer.hit(100, t);
         const sp = project(it.obj.position);
         popups.add(sp.x, sp.y, `+${g}`, COLORS.cian);
@@ -550,6 +562,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
       if (it.low && jumpY > 1.15) {
         it.done = true;
+        sfx("g.coin4", { volume: 0.4, rate: 1.2 });
         const g = scorer.hit(50, t);
         const sp = project(bgen.position);
         popups.add(sp.x, sp.y - 40, `¡Salto! +${g}`, COLORS.naranja);
@@ -560,6 +573,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       invulnUntil = t + 1.2;
       hits[Math.min(2, it.sec)]++;
       scorer.miss();
+      sfx("g.hit", { volume: 0.8 });
+      sfx("g.fail", { volume: 0.5 });
       say("mareado", ["¡Uy! Un Problemón.", "¡Ay! Esquivá los Problemones.", "¡Otra vez!"][hits.reduce((a, b) => a + b, 0) % 3], 1);
     }
   }
@@ -711,6 +726,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       expr = "concentrado";
       if (!beamFired && e >= opts.durationSec - 2.6) {
         beamFired = true;
+        sfx("g.beam");
+        window.setTimeout(() => sfx("g.bell", { volume: 0.7 }), 500);
         const g = scorer.hit(1000 + charge * 15, t, false);
         const sp = project(new THREE.Vector3(-29, 30, -29));
         popups.add(sp.x, sp.y, `¡Rayo! +${g}`, COLORS.naranja);

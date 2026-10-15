@@ -13,6 +13,7 @@ import { syncNow } from "@/lib/leads/sync";
 import type { KioskConfig } from "@/lib/config";
 import { devGame } from "@/lib/dev";
 import { useDev } from "@/lib/devtools";
+import { MUSIC, music, sfx } from "@/lib/audio";
 import type { CreateGame, GameHooks, GameInstance, GameOutcome } from "@/games/types";
 import p from "./play.module.css";
 
@@ -79,6 +80,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   // cuenta regresiva 3-2-1 antes de arrancar
   useEffect(() => {
     if (loading || count === null) return;
+    sfx(count === 0 ? "g.go" : "g.count", { rate: count === 0 ? 1 : 1 + (3 - count) * 0.08 });
     if (count === 0) {
       instRef.current?.pause?.(false);
       const t = window.setTimeout(() => setCount(null), 600);
@@ -93,6 +95,14 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
     const t = window.setTimeout(() => setShowGestures(false), 4500);
     return () => window.clearTimeout(t);
   }, [count]);
+
+  // música del juego (si tiene): arranca al jugar y se apaga al salir de la pantalla
+  useEffect(() => {
+    const url = (MUSIC as Partial<Record<GameId, string>>)[game];
+    if (!url || loading || count !== null) return;
+    music.play(url);
+  }, [game, loading, count]);
+  useEffect(() => () => music.stop(0.8), []);
 
   useEffect(() => {
     if (!banner) return;

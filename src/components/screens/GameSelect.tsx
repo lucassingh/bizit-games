@@ -4,6 +4,7 @@ import GameArt from "../GameArt";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, type GameId } from "@/lib/games";
 import { useSession } from "@/lib/store";
+import { sfx } from "@/lib/audio";
 import type { KioskConfig } from "@/lib/config";
 import s from "./screens.module.css";
 
@@ -11,6 +12,7 @@ import s from "./screens.module.css";
 export default function GameSelect({ config }: { config: KioskConfig }) {
   const { chooseGame, go, player } = useSession();
   const pick = (id: GameId) => {
+    sfx("ui.confirm");
     chooseGame(id);
     go("briefing");
   };

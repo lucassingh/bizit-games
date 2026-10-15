@@ -9,6 +9,7 @@ import { accentVars, GAMES } from "@/lib/games";
 import { LEVEL_COPY } from "@/lib/scoring";
 import { useSession } from "@/lib/store";
 import { abandon } from "../Experience";
+import { music, sfx } from "@/lib/audio";
 import r from "./result.module.css";
 
 const CTA_URL = process.env.NEXT_PUBLIC_CTA_URL || "https://bgenai.bizitglobal.com/";
@@ -49,9 +50,14 @@ function CountUp({ to, start, duration = 1400 }: { to: number; start: boolean; d
     done.current = true;
     const t0 = performance.now();
     let raf = 0;
+    let lastTick = 0;
     const tick = () => {
       const k = Math.min(1, (performance.now() - t0) / duration);
       const e = 1 - Math.pow(1 - k, 3);
+      if (k < 1 && performance.now() - lastTick > 70) {
+        lastTick = performance.now();
+        sfx("ui.tick", { volume: 0.25, rate: 0.9 + e * 0.6 });
+      }
       setV(Math.round(to * e));
       if (k < 1) raf = requestAnimationFrame(tick);
     };
@@ -88,6 +94,17 @@ export default function Result() {
   const { result, player, go } = useSession();
   const [qr, setQr] = useState("");
   const ms = useStage();
+
+  // sonido de la secuencia: fanfarria, estrellas, medallas (la música queda de fondo)
+  useEffect(() => {
+    music.duck(0.35);
+    sfx("g.win");
+    const ids: number[] = [];
+    for (let i = 1; i <= (result?.stars ?? 0); i++) ids.push(window.setTimeout(() => sfx("ui.bong", { rate: 0.9 + i * 0.12, volume: 0.6 }), T.stars + (i - 1) * 260));
+    for (let i = 0; i < 3; i++) ids.push(window.setTimeout(() => sfx("ui.select", { volume: 0.5 }), T.medals + i * 180));
+    return () => ids.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     QRCode.toString(CTA_URL, { type: "svg", margin: 0, color: { dark: "#212529", light: "#ffffff" } }).then(setQr).catch(() => setQr(""));

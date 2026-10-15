@@ -35,7 +35,7 @@ export const GAMES: Record<GameId, GameInfo> = {
     controls: [
       { gesture: "swipe-h", label: "Deslizá para cambiar de carril" },
       { gesture: "tap", label: "Tocá para saltar" },
-      { gesture: "hold-up", label: "Mantené y deslizá arriba: turbo" },
+      { gesture: "hold-up", label: "Mantené arriba: turbo" },
     ],
     metricLabel: "Compañía conectada",
     accent: "#F75D00",
