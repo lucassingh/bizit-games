@@ -185,7 +185,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const g = new THREE.Group();
     const k = new THREE.Group();
     k.scale.setScalar(scale);
-    const strokeM = new THREE.MeshStandardMaterial({ color: COLORS.niebla, roughness: 0.35, emissive: "#2a2a30" });
+    const strokeM = new THREE.MeshStandardMaterial({ color: COLORS.bgenStroke, roughness: 0.5 });
     for (const pl of MARK_POLYS) {
       const path = new THREE.CurvePath<THREE.Vector3>();
       for (let i = 0; i < pl.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pl[i][0] - 64, 64 - pl[i][1], 3), new THREE.Vector3(pl[i + 1][0] - 64, 64 - pl[i + 1][1], 3)));
@@ -197,7 +197,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     const dec = new THREE.Shape(MARK_POLYS[0].slice(0, -1).map(([x, y]) => new THREE.Vector2(x - 64, 64 - y)));
-    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(dec, { depth: 8, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: COLORS.bgenBody, roughness: 0.6 }));
+    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(dec, { depth: 8, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: COLORS.bgenBody, roughness: 0.55 }));
     body.position.z = -6;
     body.castShadow = true;
     k.add(body);
@@ -584,12 +584,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         it.obj.visible = false;
         if (it.kind === "auto") {
           autoUntil = t + 4;
-          say("procesando", "⚡ ¡Automatización! Atravieso todo.", 4);
+          say("procesando", "¡Automatización! Atravieso todo.", 4);
         } else {
           orqUntil = t + 5;
-          say("logro", "🎛️ ¡Modo orquestador! Tres BGens a la vez.", 5);
+          say("logro", "¡Modo orquestador! Tres BGens a la vez.", 5);
         }
-        hooks.hint(it.kind === "auto" ? "⚡ AUTOMATIZACIÓN" : "🎛️ ORQUESTADOR");
+        hooks.hint(it.kind === "auto" ? "AUTOMATIZACIÓN" : "ORQUESTADOR");
         continue;
       }
       // obstáculo

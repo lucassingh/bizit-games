@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
+import TechFrame, { frameInset, innerCut } from "../TechFrame";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -20,6 +21,8 @@ async function loadGame(id: GameId): Promise<CreateGame> {
 }
 
 /** Pantalla de juego: escenario + HUD (lateral en TV, inferior en tablet). */
+const STAGE_CUT = 28;
+
 export default function Play({ config, layout }: { config: KioskConfig; layout: "tv" | "tablet" }) {
   const game = useSession((st) => st.game)!;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -99,11 +102,10 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
 
   return (
     <section className={`${p.play} ${layout === "tv" ? p.tv : p.tablet}`} style={accentVars(game) as React.CSSProperties}>
-      <div className={`tech-shadow ${p.stageWrap}`}>
-      <div className={`tech ${p.stage}`}>
-        <div ref={hostRef} className={p.host} />
-        <span className="tech-brackets" aria-hidden="true" />
-        <span className="tech-line" aria-hidden="true" />
+      <div className={p.stageWrap}>
+      <div className={p.stage}>
+        <TechFrame cut={STAGE_CUT} notch={0.3} />
+        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
         {count !== null && !loading && (
@@ -117,7 +119,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
           <div className={p.gestures}>
             {g.controls.map((c) => (
               <div key={c.label} className={p.gesture}>
-                <GestureIcon gesture={c.gesture} size={layout === "tv" ? 110 : 84} />
+                <GestureIcon gesture={c.gesture} size={layout === "tv" ? 84 : 68} />
                 <span>{c.label}</span>
               </div>
             ))}

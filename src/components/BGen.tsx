@@ -119,12 +119,12 @@ export default function BGen({ expr = "reposo", size = 160, followPointer, talkK
       </defs>
       {aura && <path d={DECAGON_PATH} fill="none" stroke="url(#bgen-aura)" strokeWidth={12} strokeLinejoin="round" opacity={0.45} />}
       <path d={DECAGON_PATH} fill={COLORS.bgenBody} />
-      <g fill="none" stroke={COLORS.niebla} strokeWidth={3.6} strokeLinejoin="round" strokeLinecap="round">
+      <g fill="none" stroke={COLORS.bgenStroke} strokeWidth={3.6} strokeLinejoin="round" strokeLinecap="round">
         {MARK_PATHS.map((d) => (
           <path key={d} d={d} />
         ))}
       </g>
-      <path d={VISOR_PATH} fill={COLORS.visor} stroke="rgba(255,255,255,.14)" strokeWidth={1} />
+      <path d={VISOR_PATH} fill={COLORS.visor} />
       <g ref={faceRef} filter={glow ? "url(#bgen-led)" : undefined} />
     </svg>
   );

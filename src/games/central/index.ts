@@ -2,6 +2,8 @@ import type { CreateGame, Expr, GameHooks } from "../types";
 import { bindGestures, fitCanvas, PhaseClock, Popups, rng, Scorer } from "../shared/engine";
 import { drawBGen, makeBlinker } from "../shared/bgenFace";
 import { COLORS } from "@/lib/brand";
+import { Angry, Bot, Briefcase, Check, ChevronUp, Coins, Flame, Frown, Headphones, Package, Smile, Star, Zap, type IconNode } from "lucide";
+import { drawIcon } from "../shared/icons";
 
 /**
  * Juego 3 · Central BGen — "De manual a automático" (docs/05).
@@ -14,14 +16,12 @@ import { COLORS } from "@/lib/brand";
 
 type AreaId = "ventas" | "finanzas" | "atencion" | "operaciones";
 
-const AREAS: { id: AreaId; name: string; task: string; icon: string; color: string }[] = [
-  { id: "ventas", name: "Ventas", task: "Lead", icon: "💼", color: COLORS.naranja },
-  { id: "finanzas", name: "Finanzas", task: "Factura", icon: "💰", color: COLORS.violeta },
-  { id: "atencion", name: "Atención", task: "Reclamo", icon: "🎧", color: COLORS.rojo },
-  { id: "operaciones", name: "Operaciones", task: "Pedido", icon: "📦", color: COLORS.carbon },
+const AREAS: { id: AreaId; name: string; task: string; icon: IconNode; color: string }[] = [
+  { id: "ventas", name: "Ventas", task: "Lead", icon: Briefcase, color: COLORS.naranja },
+  { id: "finanzas", name: "Finanzas", task: "Factura", icon: Coins, color: COLORS.violeta },
+  { id: "atencion", name: "Atención", task: "Reclamo", icon: Headphones, color: COLORS.rojo },
+  { id: "operaciones", name: "Operaciones", task: "Pedido", icon: Package, color: COLORS.carbon },
 ];
-
-const EMOJI_FONT = 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
 
 interface Task {
   id: number;
@@ -82,11 +82,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const clock = new PhaseClock(hooks, opts.durationSec, (p) => {
     if (p === 1) {
       freezeUntil = t + 1.6;
-      say("logro", "¿Y si esto lo hago yo? Tocá ⚡ para automatizar.");
+      say("logro", "¿Y si esto lo hago yo? Tocá el rayo para automatizar.");
     }
     if (p === 2) {
       say("procesando", "¡Cierre de mes! Yo me encargo de lo repetitivo.");
-      hooks.hint("¡CIERRE DE MES! Atendé solo las ⭐");
+      hooks.hint("¡CIERRE DE MES! Atendé solo las tareas VIP");
       for (let i = 0; i < 4; i++) automate(i, true);
     }
     if (p === 3) {
@@ -139,7 +139,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       say("logro", `¡${AREAS[i].name} automatizada! Ya no la toques.`);
       scorer.hit(150, t, false);
       const r = layout().rooms[i];
-      popups.add(r.cx, r.cy, "⚡ +150", COLORS.cian);
+      popups.add(r.cx, r.cy, "+150 automatizado", COLORS.cian);
       if (n === 3) hooks.banner("¡Equipo de agentes!", "3 flujos automáticos");
     }
   }
@@ -201,7 +201,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (!e.done && Math.hypot(x - e.x, y - e.y) < L.card * 0.8) {
         e.done = true;
         const g = scorer.hit(200, t);
-        popups.add(e.x, e.y, `⭐ +${g}`, COLORS.naranja);
+        popups.add(e.x, e.y, `VIP +${g}`, COLORS.naranja);
         manualTotal++;
         say("logro", "¡Eso es criterio humano! Lo importante lo hacés vos.");
         return;
@@ -220,7 +220,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const r = L.rooms[i];
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
         if (automated[i]) {
-          hooks.hint(`${AREAS[i].name} ya es automática ⚡`);
+          hooks.hint(`${AREAS[i].name} ya es automática`);
           return;
         }
         routeFront(i, false);
@@ -354,10 +354,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     g.lineWidth = 4 * s;
     g.strokeStyle = v === "golden" ? "#F5B400" : v === "gray" ? "#8d8579" : a.color;
     g.stroke();
-    g.font = `${Math.round(28 * s * (v === "front" ? 1.18 : 1))}px ${EMOJI_FONT}`;
+    const ic = v === "gray" ? Angry : v === "golden" ? Star : a.icon;
+    const icColor = v === "gray" ? "#5a544c" : v === "golden" ? "#D99A00" : a.color;
+    drawIcon(g, ic, 0, -5 * s, 28 * s * (v === "front" ? 1.18 : 1), icColor, 2.2);
     g.textAlign = "center";
     g.textBaseline = "middle";
-    g.fillText(v === "gray" ? "😠" : v === "golden" ? "⭐" : a.icon, 0, -6 * s);
     g.font = `800 ${Math.round(11 * s)}px Inter, Arial`;
     g.fillStyle = v === "gray" ? "#5a544c" : COLORS.carbon;
     g.fillText(v === "golden" ? "VIP" : a.task.toUpperCase(), 0, size / 2 - 12 * s);
@@ -448,9 +449,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       g.textAlign = "left";
       g.textBaseline = "middle";
       g.fillText(a.name, r.x + 18 * s, r.y + 24 * s);
-      g.font = `${Math.round(54 * s)}px ${EMOJI_FONT}`;
-      g.textAlign = "center";
-      g.fillText(a.icon, r.cx, r.cy + 12 * s);
+      drawIcon(g, a.icon, r.cx, r.cy + 14 * s, 60 * s, a.color, 1.8);
     });
     const tr = L.tray;
     g.beginPath();
@@ -511,7 +510,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       ctx.fillStyle = "#fff";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      ctx.fillText(`${done[i]} ✓`, r.x + r.w - 16 * s, r.y + 24 * s);
+      ctx.fillText(`${done[i]}`, r.x + r.w - 34 * s, r.y + 24 * s);
+      drawIcon(ctx, Check, r.x + r.w - 20 * s, r.y + 24 * s, 16 * s, "#fff", 3);
       const b = L.btn[i];
       if (clock.phase >= 1 && clock.phase < 3) {
         const ready = glowSince[i] !== null && !automated[i];
@@ -529,10 +529,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           ctx.lineWidth = 4 * s;
           ctx.stroke();
         }
-        ctx.font = `${Math.round(26 * s)}px ${EMOJI_FONT}`;
+        drawIcon(ctx, automated[i] ? Bot : Zap, b.x, b.y, 28 * s, automated[i] ? COLORS.negro : ready ? COLORS.lima : "#b9b1a8", 2.4);
         ctx.textAlign = "center";
-        ctx.fillStyle = "#fff";
-        ctx.fillText(automated[i] ? "🤖" : "⚡", b.x, b.y + 2 * s);
         if (!automated[i] && !ready) {
           ctx.font = `500 ${Math.round(12 * s)}px "JetBrains Mono", monospace`;
           ctx.fillStyle = COLORS.gris;
@@ -557,7 +555,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         ctx.font = `800 ${Math.round(13 * s)}px Inter, Arial`;
         ctx.fillStyle = COLORS.naranja;
         ctx.textAlign = "center";
-        ctx.fillText("▲ SIGUIENTE", queue[0].x, queue[0].y + 58 * s);
+        ctx.fillText("SIGUIENTE", queue[0].x + 8 * s, queue[0].y + 58 * s);
+        drawIcon(ctx, ChevronUp, queue[0].x - 36 * s, queue[0].y + 56 * s, 14 * s, COLORS.naranja, 3);
       }
     }
     for (const f of flying) {
@@ -612,8 +611,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     ctx.roundRect(bx, by, Math.max(18 * s, bw * saturation), 18 * s, 9 * s);
     ctx.fillStyle = saturation > 0.7 ? COLORS.rojo : saturation > 0.4 ? COLORS.naranjaCalido : COLORS.cian;
     ctx.fill();
-    ctx.font = `${Math.round(26 * s)}px ${EMOJI_FONT}`;
-    ctx.fillText(saturation > 0.7 ? "🔥" : saturation > 0.4 ? "😰" : "🙂", bx + bw + 10 * s, by + 12 * s);
+    drawIcon(ctx, saturation > 0.7 ? Flame : saturation > 0.4 ? Frown : Smile, bx + bw + 24 * s, by + 9 * s, 26 * s, saturation > 0.7 ? COLORS.rojo : saturation > 0.4 ? COLORS.naranjaCalido : COLORS.cian, 2.2);
 
     drawBGen(ctx, W / 2, H * 0.24 + Math.sin(t * 2) * 5 * s, 130 * s, { expr, t, blink: blink(t), gx: 0, gy: 2, talk: 0 }, automated.some(Boolean) ? 1 : 0);
     popups.draw(ctx, 1 / 60, s);

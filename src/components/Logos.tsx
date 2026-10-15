@@ -1,7 +1,7 @@
 import { BIZIT_MARK_PATH } from "@/lib/brand";
 
 /** Logo Bizit (isotipo + BIZIT), según manual: nunca separados, isotipo a la izquierda. */
-export function BizitLogo({ height = 40, light = false }: { height?: number; light?: boolean }) {
+export function BizitLogo({ height = 40, light = false }: { height?: number | string; light?: boolean }) {
   return (
     <svg viewBox="0 0 300 100" style={{ height, width: "auto", display: "block" }} role="img" aria-label="Bizit">
       <defs>
@@ -24,7 +24,7 @@ export function BizitLogo({ height = 40, light = false }: { height?: number; lig
 }
 
 /** Logo BGenAI v2 (positivo). */
-export function BGenAILogo({ height = 32 }: { height?: number }) {
+export function BGenAILogo({ height = 32 }: { height?: number | string }) {
   // eslint-disable-next-line @next/next/no-img-element
   return <img src="/brand/bgenai-logo-positivo.svg" alt="BGenAI" style={{ height, width: "auto", display: "block" }} />;
 }

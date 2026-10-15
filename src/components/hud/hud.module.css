@@ -1,4 +1,7 @@
+/* HUD de juego: placas biseladas, puntaje que salta, anillo de tiempo, mapa de fases. */
+
 .wrap {
+  position: relative;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -6,38 +9,63 @@
 }
 
 .sidebar {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: calc(13 * var(--u));
-  padding: calc(22 * var(--u)) calc(22 * var(--u));
+  gap: calc(10 * var(--u));
+  padding: calc(44 * var(--u)) calc(28 * var(--u)) calc(30 * var(--u));
   min-height: 0;
   overflow: hidden;
 }
 
-.sidebar > :global(.panel-title) {
-  align-self: flex-start;
+.sidebar > * {
+  flex-shrink: 0;
 }
 
 .bottom {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.3fr) auto;
-  align-items: center;
-  gap: calc(18 * var(--u));
-  padding: calc(14 * var(--u)) calc(28 * var(--u));
-  --cut: calc(18 * var(--u));
+  grid-template-columns: auto minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  align-items: stretch;
+  gap: calc(12 * var(--u));
+  padding: calc(34 * var(--u)) calc(36 * var(--u)) calc(24 * var(--u));
 }
 
-.block {
+.row2 {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: calc(10 * var(--u));
+}
+
+/* ---------- placa: marco biselado chico, con una muesca de acento ---------- */
+.plaque {
+  --pc: calc(10 * var(--u));
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: calc(6 * var(--u));
+  gap: calc(4 * var(--u));
   min-width: 0;
+  padding: calc(10 * var(--u)) calc(12 * var(--u)) calc(10 * var(--u));
+  background: #f6f2ee;
+  clip-path: polygon(var(--pc) 0, 100% 0, 100% calc(100% - var(--pc)), calc(100% - var(--pc)) 100%, 0 100%, 0 var(--pc));
+}
+
+.plaque::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: calc(26 * var(--u));
+  height: calc(3 * var(--u));
+  background: var(--accent);
 }
 
 .label {
-  font: 800 calc(11.5 * var(--u)) / 1.3 var(--body);
-  letter-spacing: 1.3px;
+  font: 800 calc(10.5 * var(--u)) / 1.2 var(--body);
+  letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
@@ -45,118 +73,436 @@
   text-overflow: ellipsis;
 }
 
-.scoreRow {
+/* ---------- puntaje ---------- */
+.scorePlaque {
+  padding-right: calc(14 * var(--u));
+}
+
+.scoreWrap {
+  position: relative;
   display: flex;
   align-items: baseline;
-  gap: calc(10 * var(--u));
+  min-height: calc(40 * var(--u));
 }
 
 .score {
-  font-family: var(--mono);
-  font-weight: 500;
-  font-size: calc(40 * var(--u));
+  display: inline-block;
+  font-family: var(--display);
+  font-size: calc(34 * var(--u));
   line-height: 1;
+  letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow: 0 calc(3 * var(--u)) 0 #ddd5cc;
+  transform-origin: left center;
 }
 
 .sidebar .score {
-  font-size: calc(54 * var(--u));
+  font-size: calc(46 * var(--u));
+}
+
+.bump {
+  animation: score-bump 0.35s cubic-bezier(0.2, 1.6, 0.3, 1) both;
+}
+
+@keyframes score-bump {
+  0% {
+    transform: scale(1.18) translateY(calc(-3 * var(--u)));
+    color: var(--accent);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.delta {
+  position: absolute;
+  right: 0;
+  top: calc(-6 * var(--u));
+  font-family: var(--display);
+  font-size: calc(16 * var(--u));
+  color: var(--accent);
+  pointer-events: none;
+  animation: delta-up 0.8s ease-out both;
+}
+
+@keyframes delta-up {
+  0% {
+    transform: translateY(calc(10 * var(--u))) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  100% {
+    transform: translateY(calc(-22 * var(--u)));
+    opacity: 0;
+  }
 }
 
 .combo {
-  font-family: var(--display);
-  color: #fff;
-  background: var(--accent);
-  border-radius: 999px;
-  padding: calc(3 * var(--u)) calc(10 * var(--u));
-  font-size: calc(18 * var(--u));
-  box-shadow: 0 calc(3 * var(--u)) 0 var(--accent-deep);
-  animation: pop-in 0.3s both;
-}
-
-.timeRow,
-.metricRow {
+  position: absolute;
+  right: calc(8 * var(--u));
+  top: calc(-6 * var(--u));
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: calc(10 * var(--u));
-}
-
-.time {
-  font-family: var(--mono);
-  font-size: calc(26 * var(--u));
-  font-variant-numeric: tabular-nums;
   line-height: 1;
+  font-family: var(--display);
+  font-size: calc(22 * var(--u));
+  color: #fff;
+  background: var(--noche);
+  padding: calc(5 * var(--u)) calc(10 * var(--u)) calc(6 * var(--u));
+  clip-path: polygon(calc(8 * var(--u)) 0, 100% 0, calc(100% - calc(8 * var(--u))) 100%, 0 100%);
+  transform: rotate(8deg);
+  animation: combo-stamp 0.4s cubic-bezier(0.2, 1.5, 0.3, 1) both;
 }
 
-.low {
+.combo small {
+  font: 800 calc(8 * var(--u)) var(--body);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--lima);
+}
+
+@keyframes combo-stamp {
+  0% {
+    transform: rotate(-12deg) scale(1.9);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(10deg) scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(8deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---------- tiempo: anillo ---------- */
+.timePlaque {
+  align-items: center;
+}
+
+.ring {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: calc(2 * var(--u));
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.ringTrack {
+  fill: #fff;
+  stroke: #e6e0d9;
+  stroke-width: 6;
+}
+
+.ringFill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear, stroke 0.3s;
+}
+
+.ringTime {
+  position: relative;
+  font-family: var(--display);
+  font-size: calc(21 * var(--u));
+  line-height: 1;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.ringSecs .ringTime {
+  font-size: calc(30 * var(--u));
+}
+
+.ringUnit {
+  position: relative;
+  margin-top: calc(3 * var(--u));
+  font: 800 calc(7.5 * var(--u)) var(--body);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bottom .ringTime {
+  font-size: calc(15 * var(--u));
+}
+
+.bottom .ringSecs .ringTime {
+  font-size: calc(22 * var(--u));
+}
+
+.bottom .ringUnit {
+  font-size: calc(6.5 * var(--u));
+  margin-top: calc(1 * var(--u));
+}
+
+.ringLow .ringFill {
+  stroke: var(--red);
+}
+
+.ringLow .ringTime {
   color: var(--red);
-  animation: pop-in 1s infinite;
+}
+
+.ringLow {
+  animation: ring-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* ---------- métrica: barra segmentada ---------- */
+.metricPlaque {
+  justify-content: center;
+}
+
+.metricPlaque .label {
+  white-space: normal;
+  line-height: 1.15;
 }
 
 .metric {
   font-family: var(--display);
-  font-size: calc(26 * var(--u));
+  font-size: calc(24 * var(--u));
   line-height: 1;
+  color: var(--ink);
 }
 
-.phases {
+.segs {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: calc(2 * var(--u));
+  margin-top: calc(4 * var(--u));
+}
+
+.segs i {
+  height: calc(9 * var(--u));
+  background: #e1dad2;
+  clip-path: polygon(calc(3 * var(--u)) 0, 100% 0, calc(100% - calc(3 * var(--u))) 100%, 0 100%);
+  transition: background 0.25s;
+}
+
+.segs i.on {
+  background: var(--cian);
+}
+
+.segs i.on:nth-child(n + 8) {
+  background: var(--lima);
+}
+
+/* ---------- fases: mapa de nodos ---------- */
+.phasePlaque {
+  overflow: visible;
+}
+
+.phaseCaos .label {
+  color: var(--red);
+}
+
+.map {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  gap: calc(6 * var(--u));
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: calc(2 * var(--u));
 }
 
-.sidebar .phases {
-  flex-direction: column;
-}
-
-.phases li {
+.map li {
+  position: relative;
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: calc(6 * var(--u));
-  font-weight: 700;
-  font-size: calc(13 * var(--u));
+  gap: calc(4 * var(--u));
+  min-width: 0;
+}
+
+.node {
+  position: relative;
+  z-index: 1;
+  width: calc(34 * var(--u));
+  height: calc(37 * var(--u));
+  display: grid;
+  place-items: center;
+  color: #b3aaa0;
+  transition: color 0.3s;
+}
+
+.hex {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hex polygon {
+  fill: #fff;
+  stroke: #d3cbc2;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  transition: fill 0.3s, stroke 0.3s;
+}
+
+.node > svg:not(.hex) {
+  position: relative;
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
+  stroke-width: 2.4;
+}
+
+.done .node {
+  color: #fff;
+}
+
+.done .hex polygon {
+  fill: var(--cian);
+  stroke: var(--cian-ink);
+}
+
+.now .node {
+  color: var(--lima);
+  animation: node-in 0.45s cubic-bezier(0.2, 1.5, 0.3, 1) both;
+}
+
+.now .hex polygon {
+  fill: var(--noche);
+  stroke: var(--noche);
+}
+
+.caos.now .node {
+  color: #fff;
+  animation: node-in 0.45s both, node-alarm 0.8s ease-in-out 0.45s infinite;
+}
+
+.caos.now .hex polygon {
+  fill: var(--red);
+  stroke: var(--red);
+}
+
+@keyframes node-in {
+  0% {
+    transform: scale(0.5);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes node-alarm {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.nodeName {
+  font: 800 calc(9.5 * var(--u)) var(--body);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
 }
 
-.phases li span {
-  width: calc(22 * var(--u));
-  height: calc(22 * var(--u));
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--surface-2);
-  font-family: var(--mono);
-  font-size: calc(11 * var(--u));
-}
-
-.phases li.done span {
-  background: var(--grad-ia);
-  color: var(--negro);
-}
-
-.phases li.now {
+.now .nodeName {
   color: var(--ink);
 }
 
-.phases li.now span {
-  background: var(--noche);
-  color: var(--lima);
-  animation: pop-in 0.4s both;
-}
-
-.sidebar .phases li {
-  font-size: calc(16 * var(--u));
-}
-
-.climax {
-  font-family: var(--display);
+.caos.now .nodeName {
   color: var(--red);
-  font-size: calc(14 * var(--u));
 }
 
+/* vertical (TV): nodos apilados, nombre a la derecha, tramo vertical */
+.mapV {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(7 * var(--u));
+  margin-top: calc(4 * var(--u));
+}
+
+.mapV li {
+  flex: none;
+  flex-direction: row;
+  gap: calc(12 * var(--u));
+}
+
+.mapV .nodeName {
+  font-size: calc(12 * var(--u));
+  letter-spacing: 1px;
+}
+
+.mapV .link {
+  top: auto;
+  bottom: 50%;
+  right: auto;
+  left: calc(15 * var(--u));
+  width: calc(4 * var(--u));
+  height: calc(100% + calc(7 * var(--u)));
+}
+
+.mapV .link i {
+  transform-origin: center top;
+  background: linear-gradient(180deg, #0ab6bc, #b2f326);
+}
+
+.mapV .caos .link i {
+  background: linear-gradient(180deg, #b2f326, var(--red));
+}
+
+/* tramo entre nodos: va del centro del nodo anterior al de este */
+.link {
+  position: absolute;
+  top: calc(16.5 * var(--u));
+  right: 50%;
+  width: 100%;
+  height: calc(4 * var(--u));
+  background: #e1dad2;
+  overflow: hidden;
+}
+
+.link i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--grad-ia);
+  transform-origin: left center;
+  transition: transform 0.3s linear;
+}
+
+.caos .link i {
+  background: linear-gradient(90deg, #b2f326, var(--red));
+}
+
+/* ---------- BGen y globo ---------- */
 .bgen {
   position: relative;
   display: flex;
@@ -165,21 +511,26 @@
 }
 
 .sidebar .bgen {
-  flex-direction: column;
+  align-items: flex-start;
+  min-height: calc(88 * var(--u));
 }
 
 .say {
-  background: var(--noche);
-  color: var(--lima);
-  font: 500 calc(13 * var(--u)) / 1.3 var(--mono);
+  margin: 0;
+  text-wrap: balance;
+  font-size: calc(12.5 * var(--u));
+  line-height: 1.3;
   padding: calc(8 * var(--u)) calc(12 * var(--u));
-  border-radius: calc(12 * var(--u));
-  max-width: 24ch;
+  max-width: 100%;
   animation: pop-in 0.3s both;
 }
 
+.say::before,
+.say::after {
+  display: none;
+}
 
-
+/* ---------- controles ---------- */
 .controls {
   display: flex;
   gap: calc(10 * var(--u));
@@ -188,6 +539,9 @@
 .sidebar .controls {
   margin-top: auto;
   flex-direction: column;
+  gap: calc(6 * var(--u));
+  padding-top: calc(8 * var(--u));
+  border-top: calc(2 * var(--u)) dashed #e1dad2;
 }
 
 .control {
@@ -203,17 +557,12 @@
   display: none;
 }
 
-.sidebar .control {
-  font-size: calc(15 * var(--u));
-}
-
 @media (max-width: 1100px) {
   .bottom {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1.2fr) auto minmax(0, 1fr) minmax(0, 1.4fr);
   }
-  .bottom .phases li {
-    font-size: 0;
-    gap: 0;
+  .bottom .nodeName {
+    display: none;
   }
   .bottom .controls {
     display: none;
@@ -225,8 +574,9 @@
   left: calc(28 * var(--u));
   bottom: calc(22 * var(--u));
   z-index: 4;
-  background: var(--noche);
-  color: var(--lima);
+  background: #fff;
+  color: var(--ink);
+  border: calc(2 * var(--u)) solid var(--orange);
   font: 500 calc(16 * var(--u)) / 1.3 var(--mono);
   padding: calc(10 * var(--u)) calc(16 * var(--u));
   border-radius: calc(12 * var(--u));
@@ -246,5 +596,15 @@
   }
   100% {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bump,
+  .combo,
+  .ringLow,
+  .now .node,
+  .caos.now .node {
+    animation: none;
   }
 }

@@ -33,8 +33,10 @@ export const COLORS = {
   noche: "#131315",
   negro: "#0A0A0C",
   niebla: "#E6E6F0",
-  bgenBody: "#121216",
-  visor: "#060608",
+  /** BGen claro: cuerpo blanco con trazos negros; el visor sigue oscuro para que los LEDs se lean. */
+  bgenBody: "#FFFFFF",
+  bgenStroke: "#212529",
+  visor: "#0A0A0C",
 } as const;
 
 /** Visor y cara de BGen en coordenadas del isotipo (ver 08 §3). */

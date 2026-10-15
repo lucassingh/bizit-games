@@ -2,37 +2,43 @@ import type { Gesture } from "@/lib/games";
 import styles from "./GestureIcon.module.css";
 
 /**
- * Íconos animados de gestos para que nadie tenga que leer: una mano que
- * desliza, toca, arrastra y suelta. Mismo trazo y color en todo el kit.
+ * Íconos de gestos en estilo "línea": una mano que señala y, en el color de
+ * acento, el símbolo del gesto (ondas de toque, flechas de deslizar, arco de
+ * lanzamiento). Animados para que se entiendan sin leer.
  */
+
+/** Mano que señala, contorno cerrado (se rellena de blanco). */
 const HAND =
-  "M30 58V30a5 5 0 0 1 10 0v18m0-6a5 5 0 0 1 10 0v8m0-4a5 5 0 0 1 10 0v6m0-2a5 5 0 0 1 10 0v14c0 12-8 20-20 20h-6c-8 0-12-4-17-10l-9-12a5 5 0 0 1 8-6l4 4";
+  "M38 66V22a7 7 0 0 1 14 0v26a7 7 0 0 1 14 0v8a7 7 0 0 1 14 0v8a6 6 0 0 1 12 0v10c0 14-10 22-24 22H58c-8 0-13-3-18-9L26 73a6 6 0 0 1 9-8Z";
+const FINGERS = "M52 48v16M66 56v12M80 64v6";
 
 export default function GestureIcon({ gesture, size = 72 }: { gesture: Gesture; size?: number }) {
+  const cls = `${styles.icon} ${styles[gesture.replace("-", "_")]}`;
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size} className={`${styles.icon} ${styles[gesture.replace("-", "_")]}`} aria-hidden="true">
+    <svg viewBox="0 0 100 108" width={size} height={size * 1.08} className={cls} aria-hidden="true">
       {gesture === "swipe-h" && (
-        <g className={styles.arrows}>
-          <path d="M14 22 L4 22 M10 16 L4 22 L10 28" />
-          <path d="M86 22 L96 22 M90 16 L96 22 L90 28" />
+        <g className={styles.accent}>
+          <path d="M28 12H8m0 0l7-7M8 12l7 7" />
+          <path d="M62 12h20m0 0l-7-7m7 7l-7 7" />
         </g>
       )}
-      {(gesture === "tap" || gesture === "tap-area" || gesture === "tap-fast") && (
-        <g className={styles.ripple}>
-          <circle cx="35" cy="22" r="10" />
-          <circle cx="35" cy="22" r="18" />
+      {(gesture === "tap" || gesture === "tap-fast" || gesture === "tap-area") && (
+        <g className={`${styles.accent} ${styles.ripple}`}>
+          <path d="M32 20a13 13 0 0 1 26 0" />
+          <path d="M24 20a21 21 0 0 1 42 0" />
         </g>
       )}
+      {gesture === "tap-area" && <rect className={styles.area} x="58" y="4" width="36" height="26" rx="7" />}
       {gesture === "drag-release" && (
-        <g className={styles.sling}>
-          <path d="M70 20 L88 8" />
-          <circle cx="92" cy="6" r="3" />
-          <path d="M8 40 Q 30 18 60 26" strokeDasharray="4 6" />
+        <g className={styles.accent}>
+          <path className={styles.pull} d="M34 32L14 50m0 0l1-10m-1 10l10-1" />
+          <path className={styles.arc} d="M52 16C62 2 80 0 94 14" strokeDasharray="5 6" />
+          <path className={styles.arcHead} d="M86 6l8 8-10 4" />
         </g>
       )}
-      {gesture === "tap-area" && <rect className={styles.area} x="60" y="8" width="30" height="24" rx="6" />}
       <g className={styles.hand}>
         <path d={HAND} />
+        <path d={FINGERS} className={styles.fingers} />
       </g>
     </svg>
   );

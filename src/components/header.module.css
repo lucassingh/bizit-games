@@ -1,0 +1,63 @@
+.topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(16 * var(--u));
+  flex: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: calc(14 * var(--u));
+}
+
+.presenta {
+  font-family: var(--mono);
+  font-size: calc(11 * var(--u));
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.steps {
+  display: flex;
+  gap: calc(6 * var(--u));
+  flex-wrap: wrap;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(7 * var(--u));
+  font-weight: 700;
+  font-size: calc(13 * var(--u));
+  color: var(--muted);
+  padding: calc(5 * var(--u)) calc(11 * var(--u)) calc(5 * var(--u)) calc(5 * var(--u));
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.step i {
+  font-style: normal;
+  width: calc(22 * var(--u));
+  height: calc(22 * var(--u));
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  font-family: var(--mono);
+  font-size: calc(11 * var(--u));
+}
+
+.on {
+  background: var(--ink);
+  color: #fff;
+}
+
+.on i {
+  background: var(--orange);
+  color: #fff;
+}

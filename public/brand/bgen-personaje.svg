@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="2 4 124 120" role="img" aria-label="BGen"><title>BGen</title>
-<path d="M81.92,8.84 L110.92,29.91 L122,64 L110.92,98.09 L81.92,119.16 L46.08,119.16 L17.08,98.09 L6,64 L17.08,29.91 L46.08,8.84Z" fill="#121216"/>
-<g fill="none" stroke="#E6E6F0" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"><path d="M81.92,8.84 L110.92,29.91 L122,64 L110.92,98.09 L81.92,119.16 L46.08,119.16 L17.08,98.09 L6,64 L17.08,29.91 L46.08,8.84Z"/><path d="M64,51 L76.36,59.98 L71.64,74.52 L56.36,74.52 L51.64,59.98Z"/><path d="M64,51 L84.05,36.43 L122,64"/><path d="M76.36,59.98 L96.42,74.55 L81.92,119.16"/><path d="M71.64,74.52 L63.98,98.09 L17.08,98.09"/><path d="M56.36,74.52 L31.57,74.52 L17.08,29.91"/><path d="M51.64,59.98 L43.98,36.41 L81.92,8.84"/></g>
-<rect x="28" y="44" width="72" height="36" rx="18" fill="#060608" stroke="#FFFFFF" stroke-opacity=".14" stroke-width="1"/>
+<path d="M81.92,8.84 L110.92,29.91 L122,64 L110.92,98.09 L81.92,119.16 L46.08,119.16 L17.08,98.09 L6,64 L17.08,29.91 L46.08,8.84Z" fill="#FFFFFF"/>
+<g fill="none" stroke="#212529" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"><path d="M81.92,8.84 L110.92,29.91 L122,64 L110.92,98.09 L81.92,119.16 L46.08,119.16 L17.08,98.09 L6,64 L17.08,29.91 L46.08,8.84Z"/><path d="M64,51 L76.36,59.98 L71.64,74.52 L56.36,74.52 L51.64,59.98Z"/><path d="M64,51 L84.05,36.43 L122,64"/><path d="M76.36,59.98 L96.42,74.55 L81.92,119.16"/><path d="M71.64,74.52 L63.98,98.09 L17.08,98.09"/><path d="M56.36,74.52 L31.57,74.52 L17.08,29.91"/><path d="M51.64,59.98 L43.98,36.41 L81.92,8.84"/></g>
+<rect x="28" y="44" width="72" height="36" rx="18" fill="#0A0A0C"/>
 <g fill="#B2F326"><rect x="48" y="50" width="8" height="12" rx="2.6"/><rect x="72" y="50" width="8" height="12" rx="2.6"/></g>
 <path d="M57,70 Q64,75 71,70" fill="none" stroke="#B2F326" stroke-width="2.6" stroke-linecap="round"/>
 </svg>

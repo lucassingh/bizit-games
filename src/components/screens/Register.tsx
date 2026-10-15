@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import BGen from "../BGen";
-import { BizitLogo } from "../Logos";
+import Header, { Steps } from "../Header";
 import { useSession } from "@/lib/store";
 import { putLead } from "@/lib/leads/queue";
 import { isEmail, OCCUPATIONS, PAINS, type LeadPayload } from "@/lib/leads/types";
@@ -75,98 +75,89 @@ export default function Register({ config }: { config: KioskConfig }) {
   }
 
   return (
-    <section className={s.screen}>
-      <div className={s.dots} />
-      <header className={s.topbar}>
-        <BizitLogo height={40} />
-        <div className={s.steps} aria-label="Pasos">
-          <span className={`${s.step} ${s.stepOn}`}>
-            <i>1</i>Tus datos
-          </span>
-          <span className={s.step}>
-            <i>2</i>Elegí el juego
-          </span>
-          <span className={s.step}>
-            <i>3</i>¡A jugar!
-          </span>
-        </div>
-      </header>
+    <section className="frame">
+      <div className="sheet">
+        <div className={s.dots} />
+        <Header right={<Steps current={1} />} />
 
-      <div className={s.registerGrid}>
-        <div className={s.side}>
-          <p className={`${s.bubble} ${s.bubbleLeft}`}>¡Hola! Antes de arrancar, contame quién sos.</p>
-          <BGen expr="curioso" size="min(30vh, 300px)" followPointer />
-          <h1 className={s.h1}>
-            Sumate al <em>desafío</em> de BGen
-          </h1>
-          <p style={{ color: "var(--muted)", maxWidth: "34ch" }}>
-            Al terminar te mostramos tu diagnóstico de IA y un especialista de Bizit te puede contactar para un discovery gratuito.
-          </p>
-        </div>
+        <div className={s.registerGrid}>
+          <div className={s.side}>
+            <p className="bubble bubble-left">¡Hola! Antes de arrancar, contame quién sos.</p>
+            <BGen expr="curioso" size="min(26vh, 240px)" followPointer />
+            <h1 className={s.h1}>
+              Sumate al <em>desafío</em> de BGen
+            </h1>
+            <p style={{ color: "var(--muted)", maxWidth: "34ch", fontSize: "calc(14.5 * var(--u))" }}>
+              Al terminar te mostramos tu diagnóstico de IA y un especialista de Bizit te puede contactar para un discovery gratuito.
+            </p>
+          </div>
 
-        <form className={`panel ${s.form}`} onSubmit={submit} noValidate>
-          <div className={s.row2}>
-            <label className={s.field}>
-              <span className={s.label}>Nombre</span>
-              <input id="firstName" className={s.input} value={f.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="given-name" aria-invalid={!!errors.firstName} />
-              {errors.firstName && <span className={s.err}>{errors.firstName}</span>}
-            </label>
-            <label className={s.field}>
-              <span className={s.label}>Apellido</span>
-              <input id="lastName" className={s.input} value={f.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" aria-invalid={!!errors.lastName} />
-              {errors.lastName && <span className={s.err}>{errors.lastName}</span>}
-            </label>
-          </div>
-          <label className={s.field}>
-            <span className={s.label}>Email</span>
-            <input id="email" className={s.input} type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" value={f.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" aria-invalid={!!errors.email} />
-            {errors.email && <span className={s.err}>{errors.email}</span>}
-          </label>
-          <div className={s.field} role="group" aria-label="Ocupación">
-            <span className={s.label}>¿A qué te dedicás?</span>
-            <div className={s.chips}>
-              {OCCUPATIONS.map((o) => (
-                <button type="button" key={o} className="chip" aria-pressed={f.occupation === o} onClick={() => set("occupation", o)}>
-                  {o}
-                </button>
-              ))}
+          <form className={`panel ${s.form}`} onSubmit={submit} noValidate>
+            <div className={`${s.formBody} scroll-subtle`}>
+              <div className={s.row2}>
+                <label className={s.field}>
+                  <span className={s.label}>Nombre</span>
+                  <input id="firstName" className={s.input} value={f.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="given-name" aria-invalid={!!errors.firstName} />
+                  {errors.firstName && <span className={s.err}>{errors.firstName}</span>}
+                </label>
+                <label className={s.field}>
+                  <span className={s.label}>Apellido</span>
+                  <input id="lastName" className={s.input} value={f.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" aria-invalid={!!errors.lastName} />
+                  {errors.lastName && <span className={s.err}>{errors.lastName}</span>}
+                </label>
+              </div>
+              <label className={s.field}>
+                <span className={s.label}>Email</span>
+                <input id="email" className={s.input} type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" value={f.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" aria-invalid={!!errors.email} />
+                {errors.email && <span className={s.err}>{errors.email}</span>}
+              </label>
+              <div className={s.field} role="group" aria-label="Ocupación">
+                <span className={s.label}>¿A qué te dedicás?</span>
+                <div className={s.chips}>
+                  {OCCUPATIONS.map((o) => (
+                    <button type="button" key={o} className="chip" aria-pressed={f.occupation === o} onClick={() => set("occupation", o)}>
+                      {o}
+                    </button>
+                  ))}
+                </div>
+                {errors.occupation && <span className={s.err}>{errors.occupation}</span>}
+              </div>
+              <div className={s.field} role="group" aria-label="Lo que más tiempo te quita">
+                <span className={s.label}>
+                  ¿Qué te quita más tiempo? <small>(opcional)</small>
+                </span>
+                <div className={s.chips}>
+                  {PAINS.map((o) => (
+                    <button type="button" key={o} className="chip" aria-pressed={f.pain === o} onClick={() => set("pain", f.pain === o ? "" : o)}>
+                      {o}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className={s.consent}>
+                <input id="consent" type="checkbox" checked={f.consent} onChange={(e) => set("consent", e.target.checked)} />
+                <span>
+                  Acepto que Bizit Global use mis datos para contactarme sobre sus soluciones de IA, según la Ley 25.326 de Protección de Datos Personales. Puedo
+                  pedir acceso, rectificación o baja cuando quiera.
+                  {errors.consent && (
+                    <>
+                      <br />
+                      <span className={s.err}>{errors.consent}</span>
+                    </>
+                  )}
+                </span>
+              </label>
             </div>
-            {errors.occupation && <span className={s.err}>{errors.occupation}</span>}
-          </div>
-          <div className={s.field} role="group" aria-label="Lo que más tiempo te quita">
-            <span className={s.label}>
-              ¿Qué te quita más tiempo? <small>(opcional)</small>
-            </span>
-            <div className={s.chips}>
-              {PAINS.map((o) => (
-                <button type="button" key={o} className="chip" aria-pressed={f.pain === o} onClick={() => set("pain", f.pain === o ? "" : o)}>
-                  {o}
-                </button>
-              ))}
+            <div className={s.formFoot}>
+              <button type="button" className={s.linkBtn} onClick={() => abandon()}>
+                Volver
+              </button>
+              <button className="btn btn-lg" type="submit" disabled={saving}>
+                Seguir →
+              </button>
             </div>
-          </div>
-          <label className={s.consent}>
-            <input id="consent" type="checkbox" checked={f.consent} onChange={(e) => set("consent", e.target.checked)} />
-            <span>
-              Acepto que Bizit Global use mis datos para contactarme sobre sus soluciones de IA, según la Ley 25.326 de Protección de Datos Personales. Puedo pedir
-              acceso, rectificación o baja cuando quiera.
-              {errors.consent && (
-                <>
-                  <br />
-                  <span className={s.err}>{errors.consent}</span>
-                </>
-              )}
-            </span>
-          </label>
-          <div className={s.formFoot}>
-            <button type="button" className={s.linkBtn} onClick={() => abandon()}>
-              Volver
-            </button>
-            <button className="btn btn-lg" type="submit" disabled={saving}>
-              Seguir →
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   );

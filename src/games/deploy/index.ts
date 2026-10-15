@@ -4,6 +4,8 @@ import type { PhaseIndex } from "@/lib/games";
 import { bindGestures, fitCanvas, PhaseClock, Popups, Scorer } from "../shared/engine";
 import { drawBGen, makeBlinker } from "../shared/bgenFace";
 import { COLORS } from "@/lib/brand";
+import { Cable, Coins, Crown, Radio, type IconNode } from "lucide";
+import { drawIcon } from "../shared/icons";
 
 /**
  * Juego 2 · Deploy BGen — "Derribá el Caos" (docs/04).
@@ -36,12 +38,12 @@ const MAX_PULL = 170;
 const POWER = 0.12;
 const G_STEP = 0.001 * (1000 / 60) ** 2; // aceleración por paso (gravedad de Matter)
 
-const AGENTS: Record<Agent, { name: string; color: string; icon: string; ability: string }> = {
-  bgen: { name: "BGen", color: COLORS.niebla, icon: "", ability: "¡Apuntá bien!" },
-  cobranzas: { name: "Agente Cobranzas", color: COLORS.lima, icon: "$", ability: "Tocá: se divide en 3" },
-  voz: { name: "Agente Voz", color: COLORS.cian, icon: "◉", ability: "Tocá: onda expansiva" },
-  integrador: { name: "Agente Integrador", color: "#5ED58A", icon: "⚯", ability: "Tocá: se engancha y embiste" },
-  orquestador: { name: "BGen Orquestador", color: COLORS.lima, icon: "★", ability: "Tocá: despliega a todo el equipo" },
+const AGENTS: Record<Agent, { name: string; color: string; icon?: IconNode; ability: string }> = {
+  bgen: { name: "BGen", color: COLORS.niebla, ability: "¡Apuntá bien!" },
+  cobranzas: { name: "Agente Cobranzas", color: COLORS.lima, icon: Coins, ability: "en el aire se divide en 3" },
+  voz: { name: "Agente Voz", color: COLORS.cian, icon: Radio, ability: "en el aire lanza una onda expansiva" },
+  integrador: { name: "Agente Integrador", color: "#5ED58A", icon: Cable, ability: "en el aire se engancha y embiste" },
+  orquestador: { name: "BGen Orquestador", color: COLORS.lima, icon: Crown, ability: "en el aire despliega a todo el equipo" },
 };
 
 const LEVEL_SHOTS: Agent[][] = [
@@ -187,7 +189,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     Composite.add(world, b);
     current = b;
     abilityUsed = false;
-    say(agent === "bgen" ? "concentrado" : "curioso", shotIndex === 0 && level > 0 ? `${AGENTS[agent].name}: ${AGENTS[agent].ability}` : undefined);
+    say(agent === "bgen" ? "concentrado" : "curioso", shotIndex === 0 && level > 0 ? `${AGENTS[agent].name}: tocá ${AGENTS[agent].ability}` : undefined);
   }
 
   /* ---------- daño por choques ---------- */
@@ -660,13 +662,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (a.icon) {
       ctx.fillStyle = a.color;
       ctx.beginPath();
-      ctx.arc(b.position.x + size * 0.42, b.position.y - size * 0.42, 14, 0, Math.PI * 2);
+      ctx.arc(b.position.x + size * 0.42, b.position.y - size * 0.42, 15, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = COLORS.negro;
-      ctx.font = "900 16px Inter, Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(a.icon, b.position.x + size * 0.42, b.position.y - size * 0.42 + 1);
+      drawIcon(ctx, a.icon, b.position.x + size * 0.42, b.position.y - size * 0.42, 18, COLORS.negro, 2.4);
     }
   }
 
@@ -830,11 +828,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     queue.forEach((ag, i) => {
       const x = SLING.x - 110 - i * 64, y = GROUND - 30;
       drawBGen(ctx, x, y, 50, { expr: "reposo", t, blink: blink(t + i), gx: 4, gy: 0, talk: 0 }, ag === "orquestador" ? 1 : 0);
-      if (AGENTS[ag].icon) {
+      const ic = AGENTS[ag].icon;
+      if (ic) {
         ctx.fillStyle = AGENTS[ag].color;
         ctx.beginPath();
-        ctx.arc(x + 20, y - 20, 10, 0, Math.PI * 2);
+        ctx.arc(x + 20, y - 20, 11, 0, Math.PI * 2);
         ctx.fill();
+        drawIcon(ctx, ic, x + 20, y - 20, 13, COLORS.negro, 2.6);
       }
     });
     if (current && !aiming) {
