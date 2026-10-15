@@ -366,28 +366,8 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
     ctx.moveTo(sx - 4, ground - 10);
     ctx.lineTo(sx - 4, sy + 70);
     ctx.stroke();
-    // base con placa DEPLOY
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.moveTo(sx - 46, ground);
-    ctx.lineTo(sx + 46, ground);
-    ctx.lineTo(sx + 36, ground - 18);
-    ctx.lineTo(sx - 36, ground - 18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = COLORS.naranja;
-    ctx.beginPath();
-    ctx.moveTo(sx - 40, ground - 3);
-    ctx.lineTo(sx + 40, ground - 3);
-    ctx.lineTo(sx + 32, ground - 16);
-    ctx.lineTo(sx - 32, ground - 16);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = '900 10px "Archivo Black", Arial';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("DEPLOY", sx, ground - 9.5);
+    // cartel de madera "DEPLOY" clavado a un poste, al pie de la gomera
+    drawWoodSign(ctx, sx + 92, ground, "DEPLOY");
   } else {
     // puntas de las horquillas con cuero
     for (const x of [sx - 36, sx + 36]) {
@@ -399,6 +379,70 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+/** Cartel de madera clara con bordes irregulares, dos clavos y texto quemado. */
+export function drawWoodSign(ctx: CanvasRenderingContext2D, x: number, ground: number, text: string) {
+  ctx.save();
+  ctx.lineJoin = "round";
+  // poste
+  ctx.fillStyle = "#B4783F";
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2.5;
+  rr(ctx, x - 7, ground - 74, 14, 74, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.fillRect(x + 1, ground - 72, 5, 70);
+  // tabla con bordes irregulares, levemente inclinada
+  ctx.translate(x, ground - 60);
+  ctx.rotate(-0.05);
+  const w = 104, h = 34;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -h / 2 + 4);
+  ctx.lineTo(-w / 2 + 6, -h / 2);
+  ctx.lineTo(w / 2 - 4, -h / 2 + 2);
+  ctx.lineTo(w / 2, -h / 2 + 10);
+  ctx.lineTo(w / 2 - 3, h / 2 - 6);
+  ctx.lineTo(w / 2 - 8, h / 2);
+  ctx.lineTo(-w / 2 + 5, h / 2 - 2);
+  ctx.lineTo(-w / 2, h / 2 - 8);
+  ctx.closePath();
+  const grd = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  grd.addColorStop(0, "#F2C98A");
+  grd.addColorStop(1, "#D9A05B");
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  // vetas
+  ctx.strokeStyle = "rgba(120,70,20,0.28)";
+  ctx.lineWidth = 1.5;
+  for (const yy of [-9, -2, 6, 11]) {
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 8, yy);
+    ctx.quadraticCurveTo(0, yy + (yy % 2 ? 2 : -2), w / 2 - 10, yy);
+    ctx.stroke();
+  }
+  // clavos
+  for (const nx of [-w / 2 + 12, w / 2 - 12]) {
+    ctx.fillStyle = "#6B6E75";
+    ctx.beginPath();
+    ctx.arc(nx, -h / 2 + 9, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.arc(nx - 1, -h / 2 + 8, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // texto quemado
+  ctx.fillStyle = "#5A3412";
+  ctx.font = '900 17px "Archivo Black", Archivo, Arial';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, 2);
   ctx.restore();
 }
 
