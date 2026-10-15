@@ -5,7 +5,7 @@ import s from "./techframe.module.css";
 
 /**
  * Marco "pantalla sci-fi" (adaptado de la referencia del Dev a la paleta clara de Bizit):
- * capas de borde biselado que alternan claro/oscuro, pestaña superior con la línea naranja→rojo de Bizit
+ * capas de borde biselado que alternan claro/oscuro, pestaña superior naranja con línea negra fina
  * y pestaña inferior. Se dibuja en SVG al tamaño exacto del contenedor, así los
  * biseles quedan nítidos en cualquier escala (incluida la de Windows al 125 %).
  *
@@ -83,19 +83,14 @@ export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true }
               <stop offset="0" stopColor="#ffffff" />
               <stop offset="1" stopColor="#f5f1ec" />
             </radialGradient>
-            <linearGradient id="tf-ia" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#FE8100" />
-              <stop offset="0.55" stopColor="#F75D00" />
-              <stop offset="1" stopColor="#E80000" />
-            </linearGradient>
           </defs>
           {LAYERS.map(([i, fill]) => (
             <polygon key={i} points={octagon(w, h, i * u, c)} fill={fill} />
           ))}
           {notch > 0 && (
             <g>
-              <polygon points={`${nx},0 ${nx + nw},0 ${nx + nw - slope},${nh} ${nx + slope},${nh}`} fill="#212529" />
-              <rect x={nx + slope + 6 * u} y={nh - 3 * u} width={nw - 2 * slope - 12 * u} height={3 * u} fill="url(#tf-ia)" />
+              <polygon points={`${nx},0 ${nx + nw},0 ${nx + nw - slope},${nh} ${nx + slope},${nh}`} fill="#F75D00" />
+              <rect x={nx + slope + 6 * u} y={nh - 2.5 * u} width={nw - 2 * slope - 12 * u} height={2 * u} fill="#212529" />
               {title && (
                 <text x={w / 2} y={nh * 0.5 - 1 * u} textAnchor="middle" className={s.title} fill="#fff" fontSize={11 * u}>
                   {title.toUpperCase()}
@@ -105,8 +100,8 @@ export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true }
           )}
           {foot && (
             <g>
-              <polygon points={`${fx},${h} ${fx + fw},${h} ${fx + fw - slope * 0.6},${h - fh} ${fx + slope * 0.6},${h - fh}`} fill="#212529" />
-              <rect x={fx + slope * 0.6 + 4 * u} y={h - fh} width={fw - slope * 1.2 - 8 * u} height={2.5 * u} fill="url(#tf-ia)" />
+              <polygon points={`${fx},${h} ${fx + fw},${h} ${fx + fw - slope * 0.6},${h - fh} ${fx + slope * 0.6},${h - fh}`} fill="#F75D00" />
+              <rect x={fx + slope * 0.6 + 4 * u} y={h - fh + 0.5 * u} width={fw - slope * 1.2 - 8 * u} height={2 * u} fill="#212529" />
             </g>
           )}
         </svg>
