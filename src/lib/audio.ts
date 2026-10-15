@@ -50,10 +50,10 @@ export type SfxName = keyof typeof SFX;
 export const MUSIC = {
   compania: "/audio/music/compania-loop.mp3",
   deploy: "/audio/music/deploy-loop.mp3",
-  central: "/audio/music/compania-loop.mp3",
+  central: "/audio/music/central-loop.mp3",
 } as const;
-/** Volumen base de la música por juego (Deploy más bajo: los golpes y la goma mandan). */
-export const MUSIC_LEVEL: Record<string, number> = { compania: 0.32, deploy: 0.17, central: 0.26 };
+/** Volumen base de la música por juego (Deploy y Bandeja más bajos: los golpes, la goma y los disparos mandan). */
+export const MUSIC_LEVEL: Record<string, number> = { compania: 0.32, deploy: 0.17, central: 0.12 };
 
 interface AudioState {
   enabled: boolean;

@@ -161,7 +161,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   function fire() {
     if (ended || beamFired) return;
     bolts.push({ x: bx, y: BY - R });
-    sfx("g.laser", { volume: 0.25, rate: 1.4 + Math.random() * 0.2 });
+    sfx("g.laser", { volume: 0.45, rate: 1.4 + Math.random() * 0.2 });
     if (clock.phase === 3) charge++;
   }
 
@@ -343,7 +343,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         const base = d.kind === "vip" ? 300 : 100;
         const pts = scorer.hit(base, t);
         popups.add(d.x, d.y - 40, d.kind === "vip" ? `¡VIP! +${pts}` : `+${pts}`, d.kind === "vip" ? "#D9A441" : COLORS.cian);
-        sfx(`g.coin${Math.min(4, scorer.combo)}` as "g.coin1", { volume: 0.55 });
+        sfx(`g.coin${Math.min(4, scorer.combo)}` as "g.coin1", { volume: 0.8 });
         burst(d.x, d.y, 10, [COLORS.cian, COLORS.lima]);
         say(caught % 6 === 0 ? "logro" : "procesando", caught % 6 === 0 ? "¡Automatizado!" : undefined, 0.8);
         continue;
