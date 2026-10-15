@@ -1,23 +1,28 @@
 import * as THREE from "three";
-import { BIZIT_MARK_PATH, COLORS } from "@/lib/brand";
+import { COLORS } from "@/lib/brand";
+import { baseMaterial, instance, loadModel, powerMaterial, type KitName, type PowerMaterial } from "./kit";
 
 /**
- * La compañía (mundo compartido): maqueta diurna, amigable y bien visible.
- * Cuatro lotes separados por calles: Ventas, Operaciones, Finanzas y HQ Bizit.
- * Cada área tiene un "power" 0→1 que la lleva de gris (caos) a color (integrada).
+ * La compañía (mundo compartido): maqueta diurna armada con el Kenney City Kit
+ * (CC0). Cuatro lotes separados por calles: Ventas, Operaciones, Finanzas y la
+ * Casa Central de la empresa del visitante. Cada área tiene un "power" 0→1 que
+ * la lleva de gris (caos) a color (integrada) y enciende su cartel.
  */
 
 export type ZoneId = "ventas" | "operaciones" | "finanzas" | "hq";
 
 export interface Zone {
   id: ZoneId;
+  name: string;
   center: THREE.Vector3;
   power: number;
   target: number;
+  /** Materiales del kit con desaturación por power. */
+  pm: PowerMaterial[];
+  /** Materiales propios (cartel, props) que van de gris a color. */
   mats: { m: THREE.MeshStandardMaterial; off: THREE.Color; on: THREE.Color; emissiveOn?: THREE.Color }[];
-  windows: { mesh: THREE.InstancedMesh; ons: THREE.Color[] }[];
-  edges: THREE.LineSegments[];
   ring: THREE.Mesh;
+  sign?: { tex: THREE.CanvasTexture; draw: (on: boolean) => void; lit: boolean };
   extras: THREE.Object3D[];
 }
 
@@ -29,6 +34,12 @@ const grey = (hex: string | number) => {
 };
 
 export const ROAD = { half: 6, lots: 58 };
+/** Escala del kit: una baldosa de Kenney = S unidades del mundo. */
+const S = 10.5;
+/** Los árboles del kit son chicos frente a los edificios: van más grandes. */
+const T = S * 1.9;
+
+const ZONE_NAMES: Record<ZoneId, string> = { ventas: "VENTAS", operaciones: "OPERACIONES", finanzas: "FINANZAS", hq: "CASA CENTRAL" };
 
 export function buildWorld(scene: THREE.Scene) {
   const zones: Record<ZoneId, Zone> = {} as Record<ZoneId, Zone>;
@@ -88,20 +99,6 @@ export function buildWorld(scene: THREE.Scene) {
     }
   }
   scene.add(roads, dashes, edgeLines);
-  // ciudad de fondo, liviana (una sola llamada de dibujo)
-  const far = new THREE.InstancedMesh(new THREE.BoxGeometry(14, 1, 14), new THREE.MeshStandardMaterial({ color: "#E2DBD2", roughness: 1 }), 46);
-  for (let i = 0; i < 46; i++) {
-    const a = (i / 46) * Math.PI * 2;
-    const r = 165 + (i % 3) * 26;
-    const h = 10 + ((i * 37) % 30);
-    o.rotation.set(0, 0, 0);
-    o.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
-    o.scale.set(1, h, 1);
-    o.updateMatrix();
-    far.setMatrixAt(i, o.matrix);
-  }
-  o.scale.set(1, 1, 1);
-  scene.add(far);
 
   /* ---------- helpers ---------- */
   function mk(z: Zone | null, hex: string, opts: Partial<THREE.MeshStandardMaterialParameters> = {}) {
@@ -116,220 +113,215 @@ export function buildWorld(scene: THREE.Scene) {
     scene.add(m);
     return m;
   }
-  function cyl(z: Zone | null, r: number, h: number, hex: string, x: number, y: number, zz: number, seg = 18) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mk(z, hex));
-    m.position.set(x, y + h / 2, zz);
-    m.castShadow = m.receiveShadow = true;
-    scene.add(m);
-    return m;
-  }
-  function edges(z: Zone, mesh: THREE.Mesh, col: string = COLORS.cian) {
-    const e = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0 }));
-    e.position.copy(mesh.position);
-    e.scale.setScalar(1.01);
-    scene.add(e);
-    z.edges.push(e);
-  }
-  const winGeo = new THREE.BoxGeometry(1, 1, 0.15);
-  function windows(z: Zone, o: { x: number; y: number; zz: number; w: number; h: number; face: "x" | "z"; cols: number; rows: number; ww?: number; wh?: number; flip?: boolean }) {
-    const n = o.cols * o.rows;
-    const mesh = new THREE.InstancedMesh(winGeo, new THREE.MeshBasicMaterial({ toneMapped: false }), n);
-    const d = new THREE.Object3D();
-    const ons: THREE.Color[] = [];
-    let i = 0;
-    for (let r = 0; r < o.rows; r++)
-      for (let c = 0; c < o.cols; c++) {
-        const u = (c + 0.5) / o.cols - 0.5, v = (r + 0.5) / o.rows;
-        d.position.set(o.face === "x" ? o.x : o.x + u * o.w, o.y + v * o.h, o.face === "x" ? o.zz + u * o.w : o.zz);
-        d.rotation.y = o.face === "x" ? Math.PI / 2 : 0;
-        d.scale.set(o.ww ?? 1.3, o.wh ?? 1.5, 1);
-        d.updateMatrix();
-        mesh.setMatrixAt(i, d.matrix);
-        mesh.setColorAt(i, C("#5f6470"));
-        ons.push(Math.random() < 0.85 ? C("#FFB45C").lerp(C("#FFE2A6"), Math.random() * 0.7) : C("#9FD3DB"));
-        i++;
-      }
-    mesh.instanceColor!.needsUpdate = true;
-    scene.add(mesh);
-    z.windows.push({ mesh, ons });
-  }
   function zone(id: ZoneId, cx: number, cz: number): Zone {
     const ringMat = new THREE.MeshBasicMaterial({ color: COLORS.lima, transparent: true, opacity: 0, toneMapped: false });
     const ring = new THREE.Mesh(new THREE.RingGeometry(19, 20.5, 64), ringMat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(cx, 0.5, cz);
     scene.add(ring);
-    const z: Zone = { id, center: new THREE.Vector3(cx, 0, cz), power: 0, target: 0, mats: [], windows: [], edges: [], ring, extras: [] };
+    const z: Zone = { id, name: ZONE_NAMES[id], center: new THREE.Vector3(cx, 0, cz), power: 0, target: 0, pm: [], mats: [], ring, extras: [] };
     zones[id] = z;
     return z;
   }
-  function tree(x: number, z: number, zn: Zone) {
-    cyl(null, 0.35, 2, "#8B6B4E", x, 0.4, z, 6);
-    const top = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 0), mk(zn, "#5DAE6A"));
-    top.position.set(x, 3.6, z);
-    top.castShadow = true;
-    scene.add(top);
+
+  /** Cartel del área: tablero sobre dos postes, mirando a la calle; se enciende con el power. */
+  function sign(z: Zone, x: number, zz: number, rotY: number, wide = false) {
+    const cv = document.createElement("canvas");
+    cv.width = 1024;
+    cv.height = 256;
+    const g = cv.getContext("2d")!;
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const draw = (on: boolean) => {
+      g.fillStyle = on ? COLORS.naranja : "#9d9a97";
+      g.fillRect(0, 0, 1024, 256);
+      g.fillStyle = on ? "#ffffff" : "#e6e3df";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      let px = 150;
+      g.font = `900 ${px}px 'Archivo Black', Archivo, 'Arial Black', Arial`;
+      while (g.measureText(z.name).width > 940 && px > 60) g.font = `900 ${(px -= 6)}px 'Archivo Black', Archivo, 'Arial Black', Arial`;
+      g.fillText(z.name, 512, 140);
+      g.fillStyle = on ? "#212529" : "#6f6c69";
+      g.fillRect(0, 232, 1024, 24);
+      tex.needsUpdate = true;
+    };
+    draw(false);
+    const w = wide ? 24 : 18, h = w / 4;
+    const grp = new THREE.Group();
+    const board = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.6), [
+      mk(null, "#212529"),
+      mk(null, "#212529"),
+      mk(null, "#212529"),
+      mk(null, "#212529"),
+      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }),
+    ]);
+    board.position.y = 9 + h / 2;
+    board.castShadow = true;
+    grp.add(board);
+    for (const sx of [-1, 1]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 9.2, 8), mk(null, "#4b4f57"));
+      pole.position.set(sx * (w / 2 - 1.2), 4.6, 0);
+      pole.castShadow = true;
+      grp.add(pole);
+    }
+    grp.position.set(x, 0.4, zz);
+    grp.rotation.y = rotY;
+    scene.add(grp);
+    z.sign = { tex, draw, lit: false };
   }
-  function car(x: number, z: number, hex: string, rot: number) {
-    const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(4, 1.1, 2), new THREE.MeshStandardMaterial({ color: hex, roughness: 0.45, flatShading: true }));
-    body.position.y = 0.9;
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 1.8), new THREE.MeshStandardMaterial({ color: "#2B3A4A", roughness: 0.2, metalness: 0.4 }));
-    cab.position.set(-0.2, 1.8, 0);
-    g.add(body, cab);
-    g.traverse((o) => (o.castShadow = true));
-    g.position.set(x, 0.4, z);
-    g.rotation.y = rot;
+
+  zone("ventas", -29, 29);
+  zone("operaciones", 29, 29);
+  zone("finanzas", 29, -29);
+  zone("hq", -29, -29);
+
+  // carteles mirando a la calle por la que pasa el riel
+  sign(zones.ventas, -29, 9.5, 0);
+  sign(zones.operaciones, 29, 9.5, 0, true);
+  sign(zones.finanzas, 48.5, -29, Math.PI / 2);
+  // el cartel de la Casa Central va al costado de la plaza (el riel termina al frente de la torre)
+  sign(zones.hq, -47, -44, 0.5, true);
+
+  /* ---------- modelos del kit (asíncrono: la ciudad aparece en cuanto cargan) ---------- */
+  const pmByZoneKit = new Map<string, PowerMaterial>();
+  function zoneMat(z: Zone, kit: KitName, src: THREE.Group) {
+    const key = `${z.id}/${kit}`;
+    let pm = pmByZoneKit.get(key);
+    if (!pm) {
+      const base = baseMaterial(src);
+      if (!base) return undefined;
+      pm = powerMaterial(base);
+      pm.set(z.power);
+      pmByZoneKit.set(key, pm);
+      z.pm.push(pm);
+    }
+    return pm.mat;
+  }
+  type Put = [KitName, string, number, number, number?, number?, Zone?];
+  async function put(kit: KitName, name: string, x: number, zz: number, rotY = 0, scale = S, z?: Zone, y = 0.4) {
+    const src = await loadModel(kit, name);
+    const mat = z ? zoneMat(z, kit, src) : undefined;
+    const g = instance(src, { mat, scale, x, z: zz, rotY, y });
     scene.add(g);
     return g;
   }
-
-  /* ---------- VENTAS (x<0, z>0): oficina comercial ---------- */
-  {
-    const z = zone("ventas", -29, 29);
-    const b = box(z, 26, 10, 18, "#FFFFFF", -29, 0.4, 29);
-    edges(z, b);
-    const top = box(z, 12, 4, 10, "#F1ECE6", -31, 10.4, 27);
-    edges(z, top, COLORS.lima);
-    box(z, 26.6, 0.7, 3, COLORS.naranja, -29, 4.6, 39.4); // toldo
-    box(z, 24, 4, 0.4, "#9CC7D6", -29, 0.6, 38.1, { roughness: 0.2, metalness: 0.3 }); // vidriera
-    box(z, 10, 2.2, 0.4, COLORS.naranja, -29, 7.4, 38.3); // cartel
-    windows(z, { x: -29, y: 5.6, zz: 38.15, w: 22, h: 4, face: "z", cols: 7, rows: 1 });
-    windows(z, { x: -15.9, y: 1.4, zz: 29, w: 15, h: 8, face: "x", cols: 5, rows: 2 });
-    windows(z, { x: -42.1, y: 1.4, zz: 29, w: 15, h: 8, face: "x", cols: 5, rows: 2 });
-    cyl(z, 0.2, 5, "#9AA0A6", -26, 14.4, 25);
-    const dish = cyl(z, 1.4, 0.5, "#E6E6F0", -34, 14.4, 25, 14);
-    z.extras.push(dish);
-    tree(-50, 45, z);
-    tree(-46, 12, z);
-    tree(-12, 46, z);
-  }
-
-  /* ---------- OPERACIONES (x>0, z>0): fábrica ---------- */
-  {
-    const z = zone("operaciones", 29, 29);
-    const b = box(z, 26, 11, 20, "#DCCFB9", 29, 0.4, 27);
-    edges(z, b);
-    box(z, 26.6, 1, 20.6, "#B9AE9C", 29, 11.4, 27);
-    const ch1 = cyl(z, 1.8, 12, "#E6DCCB", 36, 11.6, 22);
-    cyl(z, 1.85, 0.8, COLORS.rojo, 36, 22.8, 22);
-    const ch2 = cyl(z, 1.8, 10, "#E6DCCB", 40, 11.6, 26);
-    cyl(z, 1.85, 0.8, COLORS.rojo, 40, 20.8, 26);
-    edges(z, ch1, COLORS.lima);
-    edges(z, ch2, COLORS.lima);
-    for (const [x, zz] of [
-      [21, 21],
-      [25, 31],
-    ]) {
-      box(z, 4.4, 2.4, 3.2, "#F1F1F1", x, 11.6, zz);
-      for (let k = 0; k < 5; k++) box(null, 0.14, 1.8, 0.06, "#6B6B70", x - 1.6 + k * 0.8, 11.9, zz + 1.63);
-    }
-    for (let r = 0; r < 5; r++) box(z, 2.2, 0.45, 0.12, "#E3B23C", 24 + (r % 2 ? 2.6 : 0), 2 + r * 1.7, 37.1);
-    windows(z, { x: 32, y: 1.6, zz: 37.08, w: 14, h: 8, face: "z", cols: 5, rows: 2 });
-    windows(z, { x: 42.08, y: 1.6, zz: 27, w: 16, h: 8, face: "x", cols: 6, rows: 2 });
-    // estacionamiento con líneas amarillas (como la referencia)
-    for (let i = 0; i < 5; i++) {
-      const l = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 5), new THREE.MeshBasicMaterial({ color: "#E3B23C" }));
-      l.rotation.x = -Math.PI / 2;
-      l.position.set(18 + i * 4.2, 0.46, 46);
-      scene.add(l);
-    }
-    car(20.1, 46, "#2F9E44", Math.PI / 2);
-    car(24.3, 46, "#FFFFFF", Math.PI / 2);
-    car(32.7, 46, COLORS.naranja, Math.PI / 2);
-    z.extras.push(ch1, ch2);
-    tree(48, 12, z);
-    tree(12, 48, z);
-  }
-
-  /* ---------- FINANZAS (x>0, z<0): torre de vidrio ---------- */
-  {
-    const z = zone("finanzas", 29, -29);
-    box(z, 22, 1.6, 22, "#EDE7DF", 29, 0.4, -29);
-    const t = box(z, 15, 26, 15, "#8FC1D3", 29, 2, -29, { roughness: 0.25, metalness: 0.35 });
-    edges(z, t);
-    const t2 = box(z, 10, 7, 10, "#A9D0DE", 29, 28, -29, { roughness: 0.25, metalness: 0.35 });
-    edges(z, t2, COLORS.lima);
-    for (let k = 0; k < 4; k++) cyl(z, 0.6, 4.6, "#FFFFFF", 22 + k * 4.6, 2, -18.6, 10);
-    windows(z, { x: 29, y: 3, zz: -21.42, w: 13, h: 23, face: "z", cols: 5, rows: 9, ww: 1.8, wh: 1.4 });
-    windows(z, { x: 36.58, y: 3, zz: -29, w: 13, h: 23, face: "x", cols: 5, rows: 9, ww: 1.8, wh: 1.4 });
-    windows(z, { x: 21.42, y: 3, zz: -29, w: 13, h: 23, face: "x", cols: 5, rows: 9, ww: 1.8, wh: 1.4 });
-    tree(48, -12, z);
-    tree(12, -48, z);
-  }
-
-  /* ---------- HQ BIZIT (x<0, z<0) ---------- */
-  let logoTex: THREE.CanvasTexture;
-  let drawLogo: (on: boolean) => void;
-  {
-    const z = zone("hq", -29, -29);
-    box(z, 24, 1.6, 24, "#EDE7DF", -29, 0.4, -29);
-    const t = box(z, 16, 36, 16, "#3A3D44", -29, 2, -29);
-    edges(z, t, COLORS.naranja);
-    const crown = box(z, 12, 4, 12, "#2B2D33", -29, 38, -29);
-    edges(z, crown, COLORS.lima);
-    const band = box(z, 16.4, 1, 16.4, COLORS.naranja, -29, 36, -29);
-    z.mats.find((x) => x.m === band.material)!.emissiveOn = C("#7a2a00");
-    cyl(z, 0.2, 6, "#9AA0A6", -29, 42, -29);
-    windows(z, { x: -29, y: 3, zz: -20.92, w: 14, h: 32, face: "z", cols: 5, rows: 12, ww: 2, wh: 1.2 });
-    windows(z, { x: -20.92, y: 3, zz: -29, w: 14, h: 32, face: "x", cols: 5, rows: 12, ww: 2, wh: 1.2 });
-    // panel con el logo de Bizit (textura de canvas)
-    const cv = document.createElement("canvas");
-    cv.width = 512;
-    cv.height = 180;
-    const g = cv.getContext("2d")!;
-    logoTex = new THREE.CanvasTexture(cv);
-    logoTex.colorSpace = THREE.SRGBColorSpace;
-    drawLogo = (on: boolean) => {
-      g.fillStyle = "#ffffff";
-      g.fillRect(0, 0, 512, 180);
-      g.save();
-      g.translate(26, 22);
-      g.scale(1.38, 1.38);
-      const p = new Path2D(BIZIT_MARK_PATH);
-      const gr = g.createLinearGradient(101.7, 48, 11.3, 48);
-      gr.addColorStop(0.6573, on ? "#E80000" : "#9a9aa0");
-      gr.addColorStop(1, on ? "#FF8600" : "#b8b8bd");
-      g.fillStyle = gr;
-      g.fill(p);
-      g.restore();
-      g.font = "900 92px Archivo, 'Arial Black', Arial";
-      g.fillStyle = on ? "#FA6B00" : "#a8a8ad";
-      g.textBaseline = "middle";
-      g.fillText("BIZIT", 200, 96);
-      logoTex.needsUpdate = true;
-    };
-    drawLogo(false);
-    const pm = new THREE.MeshBasicMaterial({ map: logoTex, toneMapped: false });
-    const p1 = new THREE.Mesh(new THREE.PlaneGeometry(11, 3.9), pm);
-    p1.position.set(-29, 33, -20.85);
-    scene.add(p1);
-    const p2 = p1.clone();
-    p2.rotation.y = Math.PI / 2;
-    p2.position.set(-20.85, 33, -29);
-    scene.add(p2);
-    tree(-48, -12, z);
-    tree(-12, -48, z);
-    tree(-48, -48, z);
-  }
-
-  // faroles
+  const R = Math.PI / 2;
+  const V = zones.ventas, O = zones.operaciones, F = zones.finanzas, H = zones.hq;
+  const plan: Put[] = [
+    // VENTAS (x<0, z>0): oficina comercial con vidriera hacia la calle del sur
+    ["comercial", "building-e", -29, 24, Math.PI, S * 1.25, V],
+    ["comercial", "building-c", -45, 40, Math.PI, S, V],
+    ["comercial", "building-h", -13, 41, Math.PI, S, V],
+    ["comercial", "detail-parasol-a", -40, 14, 0, S, V],
+    ["comercial", "detail-parasol-b", -18, 14, 0.6, S, V],
+    ["suburban", "planter", -34, 13, 0, S, V],
+    ["suburban", "planter", -24, 13, 0, S, V],
+    ["suburban", "tree-large", -49, 12, 0, T, V],
+    ["suburban", "tree-small", -9, 12, 0, T, V],
+    ["suburban", "tree-large", -48, 50, 0, T, V],
+    // OPERACIONES (x>0, z>0): fábrica, galpón, tanques y contenedores
+    ["industrial", "building-m", 23, 26, Math.PI, S * 1.2, O],
+    ["industrial", "building-i", 42, 40, -R, S, O],
+    ["industrial", "water-tower", 14, 44, 0, S, O],
+    ["industrial", "detail-tank-large", 46, 22, 0, S, O],
+    ["industrial", "shipping-container-a", 40, 12, 0.2, S, O],
+    ["industrial", "shipping-container-b", 47, 12, 0.1, S, O],
+    ["industrial", "shipping-container-c", 43.5, 15.5, 0.15, S, O],
+    ["industrial", "solar-panel-landscape-group", 12, 30, 0, S, O],
+    ["suburban", "tree-small", 10, 12, 0, T, O],
+    ["suburban", "tree-large", 50, 50, 0, T, O],
+    // FINANZAS (x>0, z<0): torre de vidrio con anexo
+    ["comercial", "building-skyscraper-a", 29, -29, R, S * 1.35, F],
+    ["comercial", "building-skyscraper-c", 14, -42, R, S * 0.95, F],
+    ["comercial", "building-l", 43, -14, R, S * 0.9, F],
+    ["suburban", "planter", 49, -20, 0, S, F],
+    ["suburban", "planter", 49, -38, 0, S, F],
+    ["suburban", "tree-large", 12, -12, 0, T, F],
+    ["suburban", "tree-small", 48, -48, 0, T, F],
+    // CASA CENTRAL (x<0, z<0): torre principal con plaza al frente (donde termina el riel)
+    ["comercial", "building-skyscraper-b", -29, -24, Math.PI, S * 1.55, H],
+    ["comercial", "building-k", -46, -40, Math.PI, S * 0.9, H],
+    ["comercial", "building-skyscraper-d", -10, -38, Math.PI, S * 0.85, H],
+    ["suburban", "planter", -38, -44, 0, S, H],
+    ["suburban", "planter", -20, -44, 0, S, H],
+    ["suburban", "tree-large", -49, -12, 0, T, H],
+    ["suburban", "tree-small", -9, -12, 0, T, H],
+  ];
+  // mobiliario urbano (sin zona: siempre a color)
+  const street: Put[] = [];
+  for (const [x, zz, r] of [
+    [-6.8, 20, R],
+    [6.8, 40, -R],
+    [-40, 6.8, 0],
+    [40, -6.8, Math.PI],
+    [64.8, 20, -R],
+    [64.8, -30, -R],
+    [-6, -64.8, 0],
+    [-51.2, 60, R],
+    [-51.2, 30, R],
+  ] as const)
+    street.push(["city", "light-curved", x, zz, r]);
   for (const [x, zz] of [
-    [-6.8, 20],
-    [6.8, 40],
-    [-40, 6.8],
-    [40, -6.8],
-    [64.8, 20],
-    [64.8, -30],
-    [-20, -64.8],
-  ]) {
-    cyl(null, 0.15, 6, "#6B6E75", x, 0, zz, 6);
-    const l = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), new THREE.MeshBasicMaterial({ color: "#FFD08A" }));
-    l.position.set(x, 6.2, zz);
-    scene.add(l);
+    [-6.8, 6.8],
+    [6.8, -6.8],
+    [51.2, 6.8],
+    [-51.2, -6.8],
+  ] as const)
+    street.push(["city", "traffic-light", x, zz, 0]);
+  street.push(["city", "dumpster", 14, 50, 0.3], ["city", "road-sign-street", -51.2, 50, 0]);
+  // manzanas exteriores a lo largo del recorrido (para correr "dentro" de la ciudad desde el inicio)
+  const outer: [string, number, number, number, number][] = [
+    ["building-k", -74, 92, R, 1.0],
+    ["building-h", -74, 72, R, 1.0],
+    ["building-c", -74, 52, R, 1.0],
+    ["building-l", -76, 28, R, 1.1],
+    ["building-h", -74, 6, R, 1.0],
+    ["building-skyscraper-c", -78, -22, R, 1.1],
+    ["building-c", -74, -46, R, 1.0],
+    ["building-k", -40, 76, 0, 1.0],
+    ["building-e", -14, 78, 0, 1.0],
+    ["building-h", 14, 76, 0, 1.0],
+    ["building-c", 40, 76, 0, 1.0],
+    ["building-l", 76, 40, -R, 1.0],
+    ["building-skyscraper-c", 78, 8, -R, 1.0],
+    ["building-k", 76, -26, -R, 1.0],
+    ["building-h", 76, -50, -R, 1.0],
+    ["building-c", 40, -76, Math.PI, 1.0],
+    ["building-e", 8, -78, Math.PI, 1.0],
+    // detrás de la plaza de la Casa Central no va nada alto: ahí se para la cámara del clímax
+    ["building-c", -2, -78, Math.PI, 0.9],
+    ["building-c", -58, -78, Math.PI, 0.9],
+  ];
+  for (const [name, x, zz, r, k] of outer) street.push(["comercial", name, x, zz, r, S * k]);
+  for (const [x, zz] of [
+    [-66, 84],
+    [-66, 40],
+    [-66, -8],
+    [-66, -60],
+    [-28, 66],
+    [28, 66],
+    [66, 28],
+    [66, -40],
+    [24, -66],
+    [-52, -66],
+  ] as const)
+    street.push(["suburban", "tree-large", x, zz, (x * 7 + zz) % 3, T]);
+  // ciudad de fondo: edificios de bajo detalle en anillo
+  const lows = ["low-detail-building-a", "low-detail-building-b", "low-detail-building-c", "low-detail-building-d", "low-detail-building-e", "low-detail-building-f", "low-detail-building-g", "low-detail-building-h", "low-detail-building-wide-a", "low-detail-building-wide-b"];
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const r = 165 + (i % 3) * 26;
+    street.push(["comercial", lows[i % lows.length], Math.cos(a) * r, Math.sin(a) * r, a + Math.PI, S * (1.4 + ((i * 7) % 5) * 0.35)]);
   }
+  const ready = Promise.allSettled([...plan, ...street].map((p) => put(...p))).then(() => {
+    (Object.values(zones) as Zone[]).forEach(applyPower);
+  });
+  void box;
 
-  /* ---------- arcos de IA: cada área → HQ ---------- */
+  /* ---------- arcos de IA: cada área → Casa Central ---------- */
   const arcs: Partial<Record<ZoneId, THREE.Mesh>> = {};
   const hqTop = new THREE.Vector3(-29, 40, -29);
   for (const id of ["ventas", "operaciones", "finanzas"] as const) {
@@ -342,33 +334,22 @@ export function buildWorld(scene: THREE.Scene) {
     arcs[id] = tube;
   }
 
-  /** Aplica el "power" de cada zona: color, ventanas, contornos, anillo y arco. */
-  const tmpC = new THREE.Color();
-  let logoOn = false;
+  /** Aplica el "power" de cada zona: color del kit, props, cartel, anillo y arco. */
   function applyPower(z: Zone) {
+    for (const pm of z.pm) pm.set(z.power);
     for (const { m, off, on, emissiveOn } of z.mats) {
       m.color.copy(off).lerp(on, z.power);
       if (emissiveOn) m.emissive.copy(emissiveOn).multiplyScalar(z.power);
     }
-    for (const w of z.windows) {
-      for (let i = 0; i < w.mesh.count; i++) {
-        const thr = (i * 0.618) % 1;
-        const k = THREE.MathUtils.smoothstep(z.power, thr * 0.7, thr * 0.7 + 0.3);
-        tmpC.set("#5f6470").lerp(w.ons[i], k);
-        w.mesh.setColorAt(i, tmpC);
-      }
-      w.mesh.instanceColor!.needsUpdate = true;
-    }
-    for (const e of z.edges) (e.material as THREE.LineBasicMaterial).opacity = z.power * 0.9;
     (z.ring.material as THREE.MeshBasicMaterial).opacity = z.power * 0.85;
     const arc = arcs[z.id];
     if (arc) (arc.material as THREE.MeshBasicMaterial).opacity = z.power * 0.85;
-    if (z.id === "hq" && z.power > 0.5 !== logoOn) {
-      logoOn = z.power > 0.5;
-      drawLogo(logoOn);
+    if (z.sign && z.power > 0.5 !== z.sign.lit) {
+      z.sign.lit = z.power > 0.5;
+      z.sign.draw(z.sign.lit);
     }
   }
 
   (Object.values(zones) as Zone[]).forEach(applyPower);
-  return { zones, applyPower, dynamic };
+  return { zones, applyPower, dynamic, ready };
 }

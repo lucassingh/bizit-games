@@ -4,6 +4,7 @@ import { useState } from "react";
 import BGen from "../BGen";
 import Header, { Steps } from "../Header";
 import { useSession } from "@/lib/store";
+import { sfx } from "@/lib/audio";
 import { putLead } from "@/lib/leads/queue";
 import { isEmail, OCCUPATIONS, PAINS, type LeadPayload } from "@/lib/leads/types";
 import type { KioskConfig } from "@/lib/config";
@@ -45,7 +46,11 @@ export default function Register({ config }: { config: KioskConfig }) {
     if (!f.occupation) er.occupation = "Elegí una opción";
     if (!f.consent) er.consent = "Necesitamos tu OK para contactarte";
     setErrors(er);
-    if (Object.keys(er).length) return;
+    if (Object.keys(er).length) {
+      sfx("ui.error");
+      return;
+    }
+    sfx("ui.confirm");
     setSaving(true);
     const now = new Date().toISOString();
     const lead: LeadPayload = {

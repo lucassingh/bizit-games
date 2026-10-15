@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
 import TechFrame, { frameInset, innerCut } from "../TechFrame";
+import SoundButton from "../SoundButton";
+import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -11,6 +13,9 @@ import { addEntry, displayName, todayEntries } from "@/lib/ranking";
 import { putLead } from "@/lib/leads/queue";
 import { syncNow } from "@/lib/leads/sync";
 import type { KioskConfig } from "@/lib/config";
+import { devGame } from "@/lib/dev";
+import { useDev } from "@/lib/devtools";
+import { MUSIC, music, sfx } from "@/lib/audio";
 import type { CreateGame, GameHooks, GameInstance, GameOutcome } from "@/games/types";
 import p from "./play.module.css";
 
@@ -26,11 +31,15 @@ const STAGE_CUT = 28;
 export default function Play({ config, layout }: { config: KioskConfig; layout: "tv" | "tablet" }) {
   const game = useSession((st) => st.game)!;
   const hostRef = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState<number | null>(3);
+  // en modo desarrollo no hay cuenta regresiva: el juego queda cargado y arranca con "Comenzar"
+  const dev = devGame() !== null;
+  const [count, setCount] = useState<number | null>(dev ? null : 3);
   const [banner, setBanner] = useState<{ title: string; subtitle: string; id: number } | null>(null);
   const [hint, setHint] = useState<{ text: string; id: number } | null>(null);
   const [showGestures, setShowGestures] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [over, setOver] = useState<GameOutcome | null>(null);
+  const [stage, setStage] = useState<{ s: "charge" | "outro"; detail?: { title: string; text: string } } | null>(null);
   const instRef = useRef<GameInstance | null>(null);
   const g = GAMES[game];
 
@@ -47,6 +56,14 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       bgen: (expr, say) => useHud.getState().patch(say ? { expr, say: { text: say, id: ++n } } : { expr }),
       banner: (title, subtitle) => setBanner({ title, subtitle, id: ++n }),
       hint: (text) => setHint({ text, id: ++n }),
+      lives: (lives) => useHud.getState().patch({ lives }),
+      stage: (s, detail) => setStage(s ? { s, detail } : null),
+      gameOver: (outcome) => {
+        if (disposed) return;
+        sfx("g.fail", { volume: 0.9, rate: 0.8 });
+        music.duck(0.25);
+        setOver(outcome);
+      },
       end: (outcome) => {
         if (!disposed) void finish(game, outcome);
       },
@@ -59,12 +76,14 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
         layout,
       });
       instRef.current.pause?.(true);
+      if (dev) useDev.getState().register(instRef.current);
       setLoading(false);
     });
     return () => {
       disposed = true;
       instRef.current?.destroy();
       instRef.current = null;
+      if (dev) useDev.getState().register(null);
     };
     // el layout cambia solo si se rota/redimensiona: el juego se adapta solo
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,6 +92,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   // cuenta regresiva 3-2-1 antes de arrancar
   useEffect(() => {
     if (loading || count === null) return;
+    sfx(count === 0 ? "g.go" : "g.count", { rate: count === 0 ? 1 : 1 + (3 - count) * 0.08 });
     if (count === 0) {
       instRef.current?.pause?.(false);
       const t = window.setTimeout(() => setCount(null), 600);
@@ -87,6 +107,14 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
     const t = window.setTimeout(() => setShowGestures(false), 4500);
     return () => window.clearTimeout(t);
   }, [count]);
+
+  // música del juego (si tiene): arranca al jugar y se apaga al salir de la pantalla
+  useEffect(() => {
+    const url = (MUSIC as Partial<Record<GameId, string>>)[game];
+    if (!url || loading || count !== null) return;
+    music.play(url);
+  }, [game, loading, count]);
+  useEffect(() => () => music.stop(0.8), []);
 
   useEffect(() => {
     if (!banner) return;
@@ -105,9 +133,11 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       <div className={p.stageWrap}>
       <div className={p.stage}>
         <TechFrame cut={STAGE_CUT} notch={0.3} />
-        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
+        <SoundButton />
+        <div ref={hostRef} className={`${p.host} ${over ? p.hostOver : ""}`} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
+        {over && <GameOver outcome={over} game={game} onRetry={() => useDev.getState().restart()} />}
         {count !== null && !loading && (
           <div className={p.countdown} aria-live="assertive">
             <span key={count} className={p.count}>
@@ -136,10 +166,58 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
             {hint.text}
           </div>
         )}
+        {stage?.s === "charge" && (
+          <div className={p.charge} aria-hidden="true">
+            <GestureIcon gesture="tap-fast" size={layout === "tv" ? 120 : 96} />
+            <span>¡Tocá rápido!</span>
+          </div>
+        )}
+        {stage?.s === "outro" && stage.detail && (
+          <div className={p.outro} role="status">
+            <span className={p.outroTag}>Juego terminado</span>
+            <strong>{stage.detail.title}</strong>
+            <p>{stage.detail.text}</p>
+          </div>
+        )}
       </div>
       </div>
       <Hud game={game} layout={layout} />
     </section>
+  );
+}
+
+/** Se acabaron las vidas: el escenario queda en gris y se ofrece reintentar o ver el resultado. */
+function GameOver({ outcome, game, onRetry }: { outcome: GameOutcome; game: GameId; onRetry: () => void }) {
+  const g = GAMES[game];
+  const [left, setLeft] = useState(20);
+  useEffect(() => {
+    if (left <= 0) {
+      void finish(game, outcome);
+      return;
+    }
+    const t = window.setTimeout(() => setLeft((l) => l - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [left, game, outcome]);
+  return (
+    <div className={p.over} role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <div className={p.overCard}>
+        <span className={p.overStamp}>Game over</span>
+        <BGen expr="mareado" size="min(16vh, 120px)" talkKey="over" />
+        <h2 id="over-title">¡Se acabaron las vidas!</h2>
+        <p>
+          Los Problemones te ganaron esta vez. Llegaste a <b>{outcome.score.toLocaleString("es-AR")}</b> puntos y {g.metricLabel.toLowerCase()} al <b>{outcome.metricValue}</b>.
+        </p>
+        <div className={p.overActions}>
+          <button className="btn btn-lg" onClick={onRetry}>
+            Reintentar
+          </button>
+          <button className="btn btn-light" onClick={() => void finish(game, outcome)}>
+            Ver mi resultado
+          </button>
+        </div>
+        <span className="eyebrow">Sigue solo en {left} s</span>
+      </div>
+    </div>
   );
 }
 

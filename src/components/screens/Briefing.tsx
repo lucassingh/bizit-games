@@ -6,6 +6,7 @@ import GestureIcon from "../GestureIcon";
 import Header, { Steps } from "../Header";
 import { accentVars, GAMES, PHASES } from "@/lib/games";
 import { useSession } from "@/lib/store";
+import { sfx } from "@/lib/audio";
 import s from "./screens.module.css";
 
 const AUTO_START = 15;
@@ -63,7 +64,13 @@ export default function Briefing({ layout, durationSec }: { layout: "tv" | "tabl
               ))}
             </div>
             <div className={s.goRow}>
-              <button className="btn btn-lg" onClick={() => go("play")}>
+              <button
+                className="btn btn-lg"
+                onClick={() => {
+                  sfx("ui.start");
+                  go("play");
+                }}
+              >
                 ¡Vamos!
               </button>
               <span className={s.countdown}>

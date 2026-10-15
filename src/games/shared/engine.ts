@@ -1,4 +1,4 @@
-import { PHASES, phaseAt, type PhaseIndex } from "@/lib/games";
+import { PHASES, phaseAt, phaseStart, type PhaseIndex } from "@/lib/games";
 import { nextCombo } from "@/lib/scoring";
 import type { GameHooks } from "../types";
 
@@ -41,6 +41,14 @@ export class PhaseClock {
     this.hooks.phase(p);
     this.hooks.banner(PHASES[p].title, p < 3 ? `Plan ${PHASES[p].name}` : "Último desafío");
     this.onPhase?.(p);
+  }
+
+  /** Modo desarrollo: salta al comienzo de la fase `p`, pasando por las intermedias (sus efectos se aplican). */
+  jumpTo(p: PhaseIndex) {
+    this.elapsed = phaseStart(p, this.duration);
+    this.lastEmit = -1;
+    for (let i = (this.phase + 1) as PhaseIndex; i <= p; i++) this.setPhase(i as PhaseIndex);
+    this.hooks.time(this.left);
   }
 
   /** Termina antes de tiempo (por ejemplo, si se derrotó al jefe). */
@@ -102,6 +110,8 @@ export interface GestureHandlers {
   onDragStart?(x: number, y: number): boolean | void;
   onDragMove?(x: number, y: number): void;
   onDragEnd?(x: number, y: number): void;
+  /** Mantener apretado y deslizar hacia arriba (turbo); false al soltar. Teclado: flecha arriba sostenida. */
+  onHold?(on: boolean): void;
 }
 
 /**
@@ -109,7 +119,7 @@ export interface GestureHandlers {
  * elemento, en px CSS). Teclado: flechas = swipe, espacio = tap (útil en TV).
  */
 export function bindGestures(el: HTMLElement, h: GestureHandlers) {
-  let sx = 0, sy = 0, st = 0, id = -1, dragging = false;
+  let sx = 0, sy = 0, st = 0, id = -1, dragging = false, holding = false, keyHold = false;
   const rel = (e: PointerEvent) => {
     const r = el.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top] as const;
@@ -126,6 +136,10 @@ export function bindGestures(el: HTMLElement, h: GestureHandlers) {
     if (e.pointerId !== id) return;
     const [x, y] = rel(e);
     if (dragging) h.onDragMove?.(x, y);
+    else if (!holding && h.onHold && sy - y > 30 && Math.abs(x - sx) < sy - y) {
+      holding = true;
+      h.onHold(true);
+    }
   };
   const up = (e: PointerEvent) => {
     if (e.pointerId !== id) return;
@@ -134,6 +148,11 @@ export function bindGestures(el: HTMLElement, h: GestureHandlers) {
     if (dragging) {
       dragging = false;
       h.onDragEnd?.(x, y);
+      return;
+    }
+    if (holding) {
+      holding = false;
+      h.onHold?.(false);
       return;
     }
     const dx = x - sx, dy = y - sy, dt = performance.now() - st;
@@ -150,13 +169,23 @@ export function bindGestures(el: HTMLElement, h: GestureHandlers) {
         dragging = false;
         h.onDragEnd?.(sx, sy);
       }
+      if (holding) {
+        holding = false;
+        h.onHold?.(false);
+      }
     }
   };
   const key = (e: KeyboardEvent) => {
     if (e.key === "ArrowLeft") h.onSwipe?.("left");
     else if (e.key === "ArrowRight") h.onSwipe?.("right");
-    else if (e.key === "ArrowUp") h.onSwipe?.("up");
-    else if (e.key === "ArrowDown") h.onSwipe?.("down");
+    else if (e.key === "ArrowUp") {
+      if (h.onHold) {
+        if (!keyHold) {
+          keyHold = true;
+          h.onHold(true);
+        }
+      } else h.onSwipe?.("up");
+    } else if (e.key === "ArrowDown") h.onSwipe?.("down");
     else if (e.key === " " || e.key === "Enter") {
       const r = el.getBoundingClientRect();
       h.onTap?.(r.width / 2, r.height / 2);
@@ -167,8 +196,16 @@ export function bindGestures(el: HTMLElement, h: GestureHandlers) {
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", cancel);
+  const keyUp = (e: KeyboardEvent) => {
+    if (e.key === "ArrowUp" && keyHold) {
+      keyHold = false;
+      h.onHold?.(false);
+    }
+  };
   window.addEventListener("keydown", key);
+  window.addEventListener("keyup", keyUp);
   return () => {
+    window.removeEventListener("keyup", keyUp);
     el.removeEventListener("pointerdown", down);
     el.removeEventListener("pointermove", move);
     el.removeEventListener("pointerup", up);

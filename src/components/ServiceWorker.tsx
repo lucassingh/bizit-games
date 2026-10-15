@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { MUSIC, SFX } from "@/lib/audio";
 
 /**
  * Registra el service worker y, una vez cargada la app, le pide que cachee
@@ -12,7 +13,9 @@ export function warmCache() {
   const urls = performance
     .getEntriesByType("resource")
     .map((e) => e.name)
-    .filter((u) => u.startsWith(location.origin) && !u.includes("/api/"));
+    .filter((u) => u.startsWith(location.origin) && !u.includes("/api/"))
+    // audio: se precarga completo aunque todavía no haya sonado
+    .concat(Object.values(SFX), Object.values(MUSIC));
   navigator.serviceWorker.ready.then((reg) => reg.active?.postMessage({ type: "warm", urls }));
 }
 

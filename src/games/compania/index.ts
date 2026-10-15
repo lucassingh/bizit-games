@@ -3,9 +3,11 @@ import type { CreateGame, Expr, GameHooks } from "../types";
 import type { PhaseIndex } from "@/lib/games";
 import { PHASES } from "@/lib/games";
 import { bindGestures, PhaseClock, Popups, rng, Scorer } from "../shared/engine";
-import { faceShapes, makeBlinker } from "../shared/bgenFace";
-import { COLORS, DECAGON_PATH, MARK_POLYS, BGEN_FACE } from "@/lib/brand";
+import { drawBGen, makeBlinker } from "../shared/bgenFace";
+import { COLORS } from "@/lib/brand";
 import { buildWorld, type ZoneId } from "./world";
+import { sfx } from "@/lib/audio";
+import { makeProblemon, type Kind, type Problemon } from "./problemones";
 
 /**
  * Juego 1 · La Compañía — runner 3D (docs/03).
@@ -13,7 +15,7 @@ import { buildWorld, type ZoneId } from "./world";
  * y salta (tap). Cada tramo integra un área; el final descarga el rayo sobre el Caos.
  */
 
-type Kind = "conector" | "mail" | "fantasma" | "excel" | "caja" | "factura" | "botella" | "auto" | "orq";
+
 
 interface Item {
   s: number;
@@ -26,11 +28,12 @@ interface Item {
   sec: number;
   baseY: number;
   phase: number;
+  tick?: Problemon["tick"];
 }
 
 const LANE_W = 3.2;
 const ZONE_ORDER: ZoneId[] = ["ventas", "operaciones", "finanzas", "hq"];
-const ZONE_NAME: Record<ZoneId, string> = { ventas: "Ventas", operaciones: "Operaciones", finanzas: "Finanzas", hq: "HQ Bizit" };
+const ZONE_NAME: Record<ZoneId, string> = { ventas: "Ventas", operaciones: "Operaciones", finanzas: "Finanzas", hq: "Casa Central" };
 
 const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   /* ---------- render ---------- */
@@ -87,31 +90,26 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     [58, -58],
     [0, -58],
     [-29, -58],
-    [-29, -47],
+    [-29, -40],
   ];
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i < W.length; i++) {
-    const p = new THREE.Vector3(W[i][0], 0.6, W[i][1]);
-    if (i === 0 || i === W.length - 1) {
-      pts.push(p);
-      continue;
+  // riel: rectas + esquinas con curva cuadrática (radio de curvatura ~7,4 > medio ancho de la cinta 5,1),
+  // en un CurvePath analítico: ancho constante y sin pliegues ni líneas cruzadas
+  const CORNER = 10.5;
+  const curve = new THREE.CurvePath<THREE.Vector3>();
+  {
+    const P = W.map(([x, z]) => new THREE.Vector3(x, 0.6, z));
+    let cursor = P[0].clone();
+    for (let i = 1; i < P.length - 1; i++) {
+      const din = P[i].clone().sub(P[i - 1]).normalize();
+      const dout = P[i + 1].clone().sub(P[i]).normalize();
+      const a = P[i].clone().addScaledVector(din, -CORNER);
+      const b = P[i].clone().addScaledVector(dout, CORNER);
+      curve.add(new THREE.LineCurve3(cursor, a));
+      curve.add(new THREE.QuadraticBezierCurve3(a, P[i].clone(), b));
+      cursor = b;
     }
-    const a = new THREE.Vector3(W[i - 1][0], 0.6, W[i - 1][1]);
-    const b = new THREE.Vector3(W[i + 1][0], 0.6, W[i + 1][1]);
-    const din = p.clone().sub(a).normalize();
-    const dout = b.clone().sub(p).normalize();
-    pts.push(p.clone().addScaledVector(din, -5), p.clone().addScaledVector(din.add(dout).normalize(), 0.8), p.clone().addScaledVector(dout, 5));
+    curve.add(new THREE.LineCurve3(cursor, P[P.length - 1].clone()));
   }
-  // puntos intermedios para que las rectas queden rectas
-  const dense: THREE.Vector3[] = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1], b = pts[i];
-    const n = Math.floor(a.distanceTo(b) / 12);
-    for (let k = 1; k <= n; k++) dense.push(a.clone().lerp(b, k / (n + 1)));
-    dense.push(b);
-  }
-  const curve = new THREE.CatmullRomCurve3(dense, false, "centripetal");
-  curve.arcLengthDivisions = 3000;
   const L = curve.getLength();
   const SAMPLES = 1500;
   const samplePts = Array.from({ length: SAMPLES + 1 }, (_, i) => curve.getPointAt(i / SAMPLES));
@@ -174,61 +172,29 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     scene.add(mesh);
   }
 
-  /* ---------- BGen 3D: isotipo v2 + visor + cara LED ---------- */
-  const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 256;
-  faceCanvas.height = 128;
-  const fctx = faceCanvas.getContext("2d")!;
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
-  faceTex.colorSpace = THREE.SRGBColorSpace;
-  function makeBGen(scale: number) {
+  /* ---------- BGen: sprite con el mismo dibujo que la UI (nítido, sin aristas) ---------- */
+  const bgenCanvas = document.createElement("canvas");
+  bgenCanvas.width = 512;
+  bgenCanvas.height = 512;
+  const bctx = bgenCanvas.getContext("2d")!;
+  const bgenTex = new THREE.CanvasTexture(bgenCanvas);
+  bgenTex.colorSpace = THREE.SRGBColorSpace;
+  bgenTex.anisotropy = 4;
+  const bgenMat = new THREE.MeshBasicMaterial({ map: bgenTex, transparent: true, toneMapped: false, depthWrite: false, alphaTest: 0.02 });
+  function makeBGen(size: number) {
     const g = new THREE.Group();
-    const k = new THREE.Group();
-    k.scale.setScalar(scale);
-    const strokeM = new THREE.MeshStandardMaterial({ color: COLORS.bgenStroke, roughness: 0.5 });
-    for (const pl of MARK_POLYS) {
-      const path = new THREE.CurvePath<THREE.Vector3>();
-      for (let i = 0; i < pl.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pl[i][0] - 64, 64 - pl[i][1], 3), new THREE.Vector3(pl[i + 1][0] - 64, 64 - pl[i + 1][1], 3)));
-      k.add(new THREE.Mesh(new THREE.TubeGeometry(path, pl.length * 6, 1.9, 8, false), strokeM));
-      for (const p of pl) {
-        const s = new THREE.Mesh(new THREE.SphereGeometry(1.9, 10, 8), strokeM);
-        s.position.set(p[0] - 64, 64 - p[1], 3);
-        k.add(s);
-      }
-    }
-    const dec = new THREE.Shape(MARK_POLYS[0].slice(0, -1).map(([x, y]) => new THREE.Vector2(x - 64, 64 - y)));
-    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(dec, { depth: 8, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: COLORS.bgenBody, roughness: 0.55 }));
-    body.position.z = -6;
-    body.castShadow = true;
-    k.add(body);
-    const { visor } = BGEN_FACE;
-    const vx = visor.x - 64, vy = 64 - visor.y - visor.h, vw = visor.w, vh = visor.h, vr = visor.r;
-    const vs = new THREE.Shape();
-    vs.moveTo(vx + vr, vy);
-    vs.lineTo(vx + vw - vr, vy);
-    vs.absarc(vx + vw - vr, vy + vr, vr, -Math.PI / 2, Math.PI / 2, false);
-    vs.lineTo(vx + vr, vy + vh);
-    vs.absarc(vx + vr, vy + vr, vr, Math.PI / 2, Math.PI * 1.5, false);
-    const vis = new THREE.Mesh(new THREE.ExtrudeGeometry(vs, { depth: 4, bevelEnabled: true, bevelSize: 1, bevelThickness: 1, bevelSegments: 2 }), new THREE.MeshStandardMaterial({ color: COLORS.visor, roughness: 0.25, metalness: 0.3 }));
-    vis.position.z = 4;
-    k.add(vis);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(vw, vh), new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, toneMapped: false }));
-    face.position.set(vx + vw / 2, vy + vh / 2, 9.3);
-    k.add(face);
-    g.add(k);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), bgenMat);
+    m.renderOrder = 3;
+    g.add(m);
     return g;
   }
-  const bgen = makeBGen(0.028);
+  const bgen = makeBGen(5.2);
   scene.add(bgen);
-  const ghosts = [makeBGen(0.022), makeBGen(0.022)];
+  const ghosts = [makeBGen(4.2), makeBGen(4.2)];
   ghosts.forEach((g) => {
     g.visible = false;
     scene.add(g);
   });
-  const auraMat = new THREE.MeshBasicMaterial({ color: COLORS.lima, transparent: true, opacity: 0, toneMapped: false, side: THREE.DoubleSide });
-  const aura = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.6, 10), auraMat);
-  bgen.add(aura);
-  aura.position.z = -0.3;
   const shadowDisc = new THREE.Mesh(new THREE.CircleGeometry(1.4, 24), new THREE.MeshBasicMaterial({ color: "#000", transparent: true, opacity: 0.18, depthWrite: false }));
   shadowDisc.rotation.x = -Math.PI / 2;
   scene.add(shadowDisc);
@@ -236,156 +202,24 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const blink = makeBlinker();
   let expr: Expr = "curioso";
   let exprUntil = 0;
+  let auraK = 0;
+  /** Redibuja el sprite (cara animada + aura cian→lima cuando está potenciado). */
   function drawFace(t: number, gx: number) {
-    const s = 256 / BGEN_FACE.visor.w;
-    fctx.clearRect(0, 0, 256, 128);
-    fctx.save();
-    fctx.scale(s, s);
-    fctx.translate(-BGEN_FACE.visor.x, -BGEN_FACE.visor.y);
-    fctx.lineCap = "round";
-    fctx.lineJoin = "round";
-    fctx.shadowColor = COLORS.lima;
-    fctx.shadowBlur = 4;
-    for (const sh of faceShapes({ expr, t, blink: blink(t), gx, gy: 0, talk: 0 })) {
-      const p = new Path2D(sh.d);
-      if (sh.fill) {
-        fctx.fillStyle = sh.fill;
-        fctx.fill(p);
-      }
-      if (sh.stroke) {
-        fctx.strokeStyle = sh.stroke;
-        fctx.lineWidth = sh.width || 2.6;
-        fctx.stroke(p);
-      }
-    }
-    fctx.restore();
-    faceTex.needsUpdate = true;
+    bctx.clearRect(0, 0, 512, 512);
+    drawBGen(bctx, 256, 256, 440, { expr, t, blink: blink(t), gx, gy: 0, talk: 0 }, auraK);
+    bgenTex.needsUpdate = true;
   }
-  void DECAGON_PATH;
 
-  /* ---------- Problemones, conectores y power-ups ---------- */
+  /* ---------- Problemones, conectores y power-ups (ver problemones.ts) ---------- */
   const rand = rng(20261120);
-  const M = {
-    eyeW: new THREE.MeshBasicMaterial({ color: "#ffffff" }),
-    eyeB: new THREE.MeshBasicMaterial({ color: COLORS.carbon }),
-    mail: new THREE.MeshStandardMaterial({ color: "#E7DCC6", roughness: 0.9, flatShading: true }),
-    ghost: new THREE.MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.6, transparent: true, opacity: 0.88 }),
-    excel: new THREE.MeshStandardMaterial({ color: "#5E9F6A", roughness: 0.8, flatShading: true }),
-    caja: new THREE.MeshStandardMaterial({ color: "#C9A77A", roughness: 0.9, flatShading: true }),
-    factura: new THREE.MeshStandardMaterial({ color: "#F0D979", roughness: 0.9, side: THREE.DoubleSide }),
-    botella: new THREE.MeshStandardMaterial({ color: "#7FB59A", roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85 }),
-    con: new THREE.MeshBasicMaterial({ color: COLORS.cian, toneMapped: false }),
-    conCore: new THREE.MeshBasicMaterial({ color: COLORS.lima, toneMapped: false }),
-    auto: new THREE.MeshBasicMaterial({ color: COLORS.lima, toneMapped: false }),
-    orq: new THREE.MeshStandardMaterial({ color: COLORS.naranja, emissive: "#7a2a00", roughness: 0.3 }),
-  };
-  const G = {
-    eye: new THREE.SphereGeometry(0.22, 10, 8),
-    pupil: new THREE.SphereGeometry(0.12, 8, 6),
-    torus: new THREE.TorusGeometry(0.55, 0.16, 8, 20),
-    core: new THREE.SphereGeometry(0.22, 10, 8),
-  };
-  function eyes(parent: THREE.Object3D, y: number, z: number, spread = 0.35) {
-    for (const sx of [-1, 1]) {
-      const e = new THREE.Mesh(G.eye, M.eyeW);
-      e.position.set(sx * spread, y, z);
-      const p = new THREE.Mesh(G.pupil, M.eyeB);
-      p.position.set(sx * spread, y - 0.03, z + 0.15);
-      parent.add(e, p);
-    }
-  }
-  function makeObj(kind: Kind): { obj: THREE.Object3D; low: boolean; y: number } {
-    const g = new THREE.Group();
-    let low = false, y = 0.5;
-    const add = (m: THREE.Mesh) => {
-      m.castShadow = true;
-      g.add(m);
-      return m;
-    };
-    switch (kind) {
-      case "conector": {
-        add(new THREE.Mesh(G.torus, M.con));
-        g.add(new THREE.Mesh(G.core, M.conCore));
-        y = 1.4;
-        break;
-      }
-      case "mail": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.5), M.mail)).position.y = 0.7;
-        const flap = add(new THREE.Mesh(new THREE.ConeGeometry(1.1, 0.6, 4), M.mail));
-        flap.rotation.set(Math.PI, Math.PI / 4, 0);
-        flap.position.set(0, 1.1, 0.26);
-        flap.scale.set(1, 1, 0.1);
-        eyes(g, 0.65, 0.3);
-        low = true;
-        y = 0;
-        break;
-      }
-      case "caja": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.6), M.caja)).position.y = 0.7;
-        eyes(g, 0.8, 0.85);
-        low = true;
-        y = 0;
-        break;
-      }
-      case "fantasma": {
-        add(new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12), M.ghost)).position.y = 0.4;
-        const tail = add(new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.4, 12, 1, true), M.ghost));
-        tail.rotation.x = Math.PI;
-        tail.position.y = -0.5;
-        eyes(g, 0.55, 0.95, 0.38);
-        y = 1.7;
-        break;
-      }
-      case "excel": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(2, 2.4, 1.4), M.excel)).position.y = 1.2;
-        const grid = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2.4, 1.4, 3, 4, 1)), new THREE.LineBasicMaterial({ color: "#2f5b37" }));
-        grid.position.y = 1.2;
-        g.add(grid);
-        eyes(g, 1.6, 0.75);
-        y = 0;
-        break;
-      }
-      case "factura": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.3, 0.12), M.factura)).position.y = 1.15;
-        const clock = new THREE.Mesh(new THREE.CircleGeometry(0.45, 20), new THREE.MeshBasicMaterial({ color: COLORS.rojo }));
-        clock.position.set(0, 0.7, 0.08);
-        g.add(clock);
-        eyes(g, 1.6, 0.1);
-        y = 0;
-        break;
-      }
-      case "botella": {
-        const b = add(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, LANE_W * 2 + 0.6, 18), M.botella));
-        b.rotation.z = Math.PI / 2;
-        b.position.y = 1.3;
-        const neck = add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 1.6, 12), M.botella));
-        neck.rotation.z = Math.PI / 2;
-        neck.position.set(LANE_W + 1, 1.3, 0);
-        eyes(g, 1.7, 1.25, 0.5);
-        y = 0;
-        break;
-      }
-      case "auto": {
-        add(new THREE.Mesh(new THREE.OctahedronGeometry(0.9, 0), M.auto));
-        y = 1.6;
-        break;
-      }
-      case "orq": {
-        add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), M.orq));
-        y = 1.6;
-        break;
-      }
-    }
-    return { obj: g, low, y };
-  }
 
   const items: Item[] = [];
   const conTotal = [0, 0, 0];
   const conGot = [0, 0, 0];
   const hits = [0, 0, 0];
   function place(it: Omit<Item, "obj" | "low" | "baseY" | "done" | "phase">) {
-    const { obj, low, y } = makeObj(it.kind);
-    if (it.kind !== "conector" && it.kind !== "botella") obj.scale.setScalar(1.3);
+    const { obj, low, y, tick } = makeProblemon(it.kind);
+    if (it.kind !== "conector" && it.kind !== "botella" && it.kind !== "fantasma" && it.kind !== "auto" && it.kind !== "orq") obj.scale.setScalar(1.25);
     const p = curve.getPointAt(Math.min(0.999, it.s / L));
     const tg = curve.getTangentAt(Math.min(0.999, it.s / L));
     const r = new THREE.Vector3(-tg.z, 0, tg.x).normalize();
@@ -394,11 +228,19 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     obj.lookAt(obj.position.clone().sub(tg));
     obj.visible = false;
     scene.add(obj);
-    items.push({ ...it, obj, low, baseY: y, done: false, phase: rand() * 6 });
+    items.push({ ...it, obj, low, baseY: y, done: false, phase: rand() * 6, tick });
     if (it.kind === "conector") conTotal[it.sec]++;
   }
-  const near = (s: number) => SB.some((b) => Math.abs(s - b) < 9);
-  for (let sec = 0; sec < 3; sec++) {
+  // ni en los límites de tramo ni en las esquinas (ahí los carriles se cierran y el esquive se vuelve injusto)
+  const corners = W.slice(1, -1).map(([x, z]) => distTo(x, z));
+  const LINEUP = typeof location !== "undefined" && new URLSearchParams(location.search).has("lineup");
+  const near = (s: number) => SB.some((b) => Math.abs(s - b) < 9) || corners.some((c) => Math.abs(s - c) < 13);
+  if (LINEUP) {
+    const kinds: Kind[] = ["mail", "fantasma", "excel", "caja", "factura", "botella", "conector", "auto", "orq"];
+    // una fila ancha frente a la cámara (los carriles fraccionarios solo sirven para la foto)
+    kinds.forEach((kind, i) => place({ s: 16, lane: 0, lanes: [(i - 4) * 1.15], kind, sec: 0 }));
+  }
+  for (let sec = 0; sec < 3 && !LINEUP; sec++) {
     let s = SB[sec] + (sec === 0 ? 22 : 12);
     const end = SB[sec + 1] - 8;
     const obstacles: Kind[] = sec === 0 ? ["fantasma", "mail"] : sec === 1 ? ["excel", "caja"] : ["factura", "botella", "excel"];
@@ -441,16 +283,57 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     }
   }
 
-  /* ---------- El Caos Operativo: torbellino de papeles sobre el HQ ---------- */
+  /* ---------- El Caos Operativo: torbellino de papeles sobre la Casa Central ---------- */
   const PAPERS = 140;
   const paperMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.2, 0.9), new THREE.MeshStandardMaterial({ color: "#C9C1B4", side: THREE.DoubleSide, transparent: true }), PAPERS);
   const paperSeed = Array.from({ length: PAPERS }, () => ({ a: Math.random() * 6.28, h: Math.random(), r: 10 + Math.random() * 9, s: 0.5 + Math.random() }));
   scene.add(paperMesh);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1, 12, 1, true), new THREE.MeshBasicMaterial({ color: COLORS.lima, transparent: true, opacity: 0, toneMapped: false }));
-  scene.add(beam);
+  // relámpago: dos tubos dentados (núcleo lima + halo cian) que se regeneran cada cuadro mientras dura
+  const boltCore = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: "#F3FFB0", transparent: true, opacity: 0, toneMapped: false, depthWrite: false }));
+  const boltHalo = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: COLORS.cian, transparent: true, opacity: 0, toneMapped: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(boltHalo, boltCore);
+  const flashTex = (() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d")!;
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.25, "rgba(178,243,38,0.9)");
+    gr.addColorStop(1, "rgba(10,182,188,0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, opacity: 0, toneMapped: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+  flash.position.set(-29, 42, -29);
+  scene.add(flash);
+  function buildBolt(from: THREE.Vector3, to: THREE.Vector3, amp: number, seed: number) {
+    const pts: THREE.Vector3[] = [];
+    const dir = to.clone().sub(from);
+    const n = 14;
+    const side = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+    for (let i = 0; i <= n; i++) {
+      const k = i / n;
+      const p = from.clone().addScaledVector(dir, k);
+      if (i > 0 && i < n) {
+        const j = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+        const r1 = j - Math.floor(j);
+        const j2 = Math.sin(seed * 39.3468 + i * 11.135) * 24634.6345;
+        const r2 = j2 - Math.floor(j2);
+        const env = Math.sin(k * Math.PI);
+        p.addScaledVector(side, (r1 - 0.5) * 2 * amp * env);
+        p.y += (r2 - 0.5) * amp * env;
+      }
+      pts.push(p);
+    }
+    return new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.05);
+  }
+  let boltSeed = 0;
+  let shake = 0;
+  let outroT = -1;
   const smoke = Array.from({ length: 14 }, (_, i) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: "#ffffff", transparent: true, opacity: 0 }));
-    m.userData = { x: i % 2 ? 36 : 40, z: i % 2 ? 22 : 26, base: i % 2 ? 24 : 22, k: (i / 14) * 1 };
+    m.userData = { x: i % 2 ? 20 : 25, z: i % 2 ? 22 : 24, base: i % 2 ? 17 : 15, k: (i / 14) * 1 };
     scene.add(m);
     return m;
   });
@@ -470,7 +353,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let showcase: { zone: ZoneId; until: number } | null = null;
   let charge = 0;
   let beamFired = false;
+  let boostShown = false;
   let ended = false;
+  const LIVES = 3;
+  let lives = LIVES;
+  hooks.lives(lives);
   const finalPower: number[] = [0, 0, 0];
 
   const say = (e: Expr, text?: string, hold = 1.2) => {
@@ -492,6 +379,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
 
   const clock = new PhaseClock(hooks, opts.durationSec, (p: PhaseIndex) => {
+    if (p === 3 && !arrived) arrive();
     const sec = p - 1;
     if (sec >= 0 && sec < 3) {
       finalPower[sec] = sectionBar(sec);
@@ -500,20 +388,58 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       showcase = { zone: ZONE_ORDER[sec], until: t + 2 };
       const pts = Math.round(finalPower[sec] * 500);
       scorer.hit(pts, t, false);
+      sfx("g.phase");
       say("logro", `¡${ZONE_NAME[ZONE_ORDER[sec]]} integrada al ${Math.round(finalPower[sec] * 100)}%!`, 2);
     }
     if (p === 3) {
       window.setTimeout(() => hooks.hint("¡Tocá rápido para cargar el rayo!"), 1800);
     }
-  });
+  }, true);
   say("curioso", "¡La empresa está desconectada! Ayudame a integrarla.", 2.5);
 
-  function sAt(e: number) {
-    const D = opts.durationSec;
-    const T = [0, ...PHASES.map((p) => p.until * D)];
-    if (e >= T[3]) return SB[3] + (SB[4] - SB[3]) * Math.min(1, (e - T[3]) / 4.5);
-    for (let i = 0; i < 3; i++) if (e < T[i + 1]) return SB[i] + (SB[i + 1] - SB[i]) * ((e - T[i]) / (T[i + 1] - T[i]));
-    return SB[3];
+  /* ---------- avance ----------
+   * BGen avanza por distancia (no por reloj): a velocidad normal cada tramo dura lo
+   * nominal (25/30/25 s) y se llega a la Casa Central a los 80 s. Con turbo se llega
+   * antes y el tiempo ahorrado se convierte en puntos. El Caos dura siempre 10 s.
+   */
+  const D = opts.durationSec;
+  const T = [0, ...PHASES.map((p) => p.until * D)];
+  const BOOST = 1.7;
+  let s = 0;
+  let boost = false;
+  let boostK = 0; // 0..1 suavizado, para cámara y efectos
+  let arrived = false;
+  const baseSpeed = () => {
+    const k = Math.min(2, clock.phase);
+    return (SB[k + 1] - SB[k]) / (T[k + 1] - T[k]);
+  };
+  function arrive() {
+    if (arrived) return;
+    arrived = true;
+    s = SB[3];
+    boost = false;
+    sfx("g.win", { volume: 0.7 });
+    const saved = Math.max(0, T[3] - clock.elapsed);
+    if (saved > 0.5) {
+      const g = scorer.hit(Math.round(saved) * 25, t, false);
+      const sp = project(bgen.position);
+      popups.add(sp.x, sp.y - 60, `Tiempo ahorrado +${g}`, COLORS.naranja);
+    }
+    clock.elapsed = T[3]; // el Caos dura siempre lo nominal (D − T[3] = 10 s)
+    if (clock.phase < 3) clock.setPhase(3);
+    hooks.stage("charge");
+  }
+  /** Avanza por el riel; cambia de fase al cruzar cada tramo y llega a la Casa Central. */
+  function advance(dt: number) {
+    if (arrived) {
+      // entra unos metros a la plaza y se planta frente a la torre
+      s = SB[3] + Math.min(7, SB[4] - SB[3]) * Math.min(1, (clock.elapsed - T[3]) / 3);
+      return;
+    }
+    boostK += ((boost ? 1 : 0) - boostK) * Math.min(1, dt * 4);
+    s += baseSpeed() * (1 + (BOOST - 1) * boostK) * dt;
+    while (clock.phase < 2 && s >= SB[clock.phase + 1]) clock.setPhase((clock.phase + 1) as PhaseIndex);
+    if (s >= SB[3]) arrive();
   }
 
   /* ---------- input ---------- */
@@ -529,11 +455,27 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         }
       } else if (dir === "up") jump();
     },
+    onHold(on) {
+      if (paused || ended || clock.phase === 3) {
+        boost = false;
+        return;
+      }
+      if (on && !boost) {
+        sfx("g.zap", { volume: 0.5 });
+        say("concentrado");
+        if (!boostShown) {
+          boostShown = true;
+          hooks.hint("¡TURBO!");
+        }
+      }
+      boost = on;
+    },
     onTap() {
       if (paused || ended) return;
       if (clock.phase === 3) {
         if (!beamFired) {
           charge++;
+          sfx("g.tap", { volume: 0.5, rate: 0.8 + Math.min(1.2, charge * 0.02) });
           scorer.hit(20, t);
           say("concentrado");
         }
@@ -543,7 +485,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     },
   });
   function jump() {
-    if (t - jumpT > 0.62) jumpT = t;
+    if (t - jumpT > 0.62) {
+      jumpT = t;
+      sfx("g.jump", { volume: 0.45 });
+    }
   }
 
   /* ---------- colisiones ---------- */
@@ -554,7 +499,6 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
 
   function collide(s: number, jumpY: number) {
-    const myLane = Math.round(laneX);
     const power = t < autoUntil || t < orqUntil;
     for (const it of items) {
       if (it.done) continue;
@@ -564,30 +508,33 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         // ya pasó: ¿por poco?
         if (it.kind !== "conector" && it.kind !== "auto" && it.kind !== "orq" && it.lanes.includes(prevLane) && t - laneChangedAt < 0.5) {
           const g = scorer.hit(50, t);
+          sfx("g.near", { volume: 0.5 });
           const sp = project(bgen.position);
           popups.add(sp.x, sp.y - 40, `¡Por poco! +${g}`, COLORS.violeta);
         }
         it.done = true;
         continue;
       }
-      const inLane = t < orqUntil || it.lanes.includes(myLane);
+      const inLane = it.lanes.some((l) => Math.abs(laneX - l) < 0.42);
       if (!inLane) continue;
       if (it.kind === "conector") {
         it.done = true;
         it.obj.visible = false;
         conGot[it.sec]++;
-        scorer.hit(10, t);
+        scorer.hit(t < orqUntil ? 20 : 10, t);
+        sfx(`g.coin${Math.min(4, scorer.combo)}` as "g.coin1", { volume: 0.55 });
         continue;
       }
       if (it.kind === "auto" || it.kind === "orq") {
         it.done = true;
         it.obj.visible = false;
+        sfx(it.kind === "auto" ? "g.power" : "g.power2");
         if (it.kind === "auto") {
           autoUntil = t + 4;
           say("procesando", "¡Automatización! Atravieso todo.", 4);
         } else {
           orqUntil = t + 5;
-          say("logro", "¡Modo orquestador! Tres BGens a la vez.", 5);
+          say("logro", "¡Modo orquestador! Puntos dobles y nada me frena.", 5);
         }
         hooks.hint(it.kind === "auto" ? "AUTOMATIZACIÓN" : "ORQUESTADOR");
         continue;
@@ -596,6 +543,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (power) {
         it.done = true;
         it.obj.visible = false;
+        sfx("g.bell", { volume: 0.4, rate: 1.4 });
         const g = scorer.hit(100, t);
         const sp = project(it.obj.position);
         popups.add(sp.x, sp.y, `+${g}`, COLORS.cian);
@@ -603,6 +551,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
       if (it.low && jumpY > 1.15) {
         it.done = true;
+        sfx("g.coin4", { volume: 0.4, rate: 1.2 });
         const g = scorer.hit(50, t);
         const sp = project(bgen.position);
         popups.add(sp.x, sp.y - 40, `¡Salto! +${g}`, COLORS.naranja);
@@ -613,8 +562,95 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       invulnUntil = t + 1.2;
       hits[Math.min(2, it.sec)]++;
       scorer.miss();
+      sfx("g.hit", { volume: 0.8 });
+      shake = Math.max(shake, 0.7);
+      lives--;
+      hooks.lives(lives);
+      if (lives <= 0) {
+        // se acabaron las vidas: el juego queda congelado donde está
+        ended = true;
+        paused = true;
+        clock.paused = true;
+        boost = false;
+        say("mareado", "¡Uf! Demasiados Problemones…", 9);
+        const pct = connectedPct();
+        hooks.gameOver({ score: scorer.score, metricValue: `${Math.round(pct * 100)}%`, metricPct: pct });
+        return;
+      }
+      sfx("g.fail", { volume: 0.5 });
       say("mareado", ["¡Uy! Un Problemón.", "¡Ay! Esquivá los Problemones.", "¡Otra vez!"][hits.reduce((a, b) => a + b, 0) % 3], 1);
     }
+  }
+
+  /* ---------- medidor de carga del rayo (clímax) ---------- */
+  const CHARGE_MAX = 60;
+  function drawChargeMeter(w: number, h: number, k: number, secsLeft: number) {
+    const bw = Math.min(w * 0.6, 640 * k), bh = 26 * k;
+    const x = (w - bw) / 2, y = 118 * k;
+    const fill = Math.min(1, charge / CHARGE_MAX);
+    const cut = 12 * k;
+    octx.save();
+    octx.textAlign = "center";
+    octx.textBaseline = "middle";
+    // título que late
+    const pulse = 1 + 0.04 * Math.sin(performance.now() / 120);
+    octx.font = `900 ${Math.round(30 * k * pulse)}px "Archivo Black", Archivo, "Arial Black", Arial`;
+    octx.lineWidth = 8 * k;
+    octx.strokeStyle = "rgba(33,37,41,0.9)";
+    octx.fillStyle = "#fff";
+    octx.strokeText("¡TOCÁ RÁPIDO Y CARGÁ EL RAYO!", w / 2, y - 48 * k);
+    octx.fillText("¡TOCÁ RÁPIDO Y CARGÁ EL RAYO!", w / 2, y - 48 * k);
+    // placa biselada
+    const plate = (px: number, py: number, pw: number, ph: number) => {
+      octx.beginPath();
+      octx.moveTo(px + cut, py);
+      octx.lineTo(px + pw - cut, py);
+      octx.lineTo(px + pw, py + cut);
+      octx.lineTo(px + pw, py + ph - cut);
+      octx.lineTo(px + pw - cut, py + ph);
+      octx.lineTo(px + cut, py + ph);
+      octx.lineTo(px, py + ph - cut);
+      octx.lineTo(px, py + cut);
+      octx.closePath();
+    };
+    plate(x - 6 * k, y - 6 * k, bw + 12 * k, bh + 12 * k);
+    octx.fillStyle = "#212529";
+    octx.fill();
+    plate(x, y, bw, bh);
+    octx.fillStyle = "#3a3e46";
+    octx.fill();
+    if (fill > 0) {
+      octx.save();
+      plate(x, y, bw, bh);
+      octx.clip();
+      const g = octx.createLinearGradient(x, 0, x + bw, 0);
+      g.addColorStop(0, COLORS.cian);
+      g.addColorStop(1, COLORS.lima);
+      octx.fillStyle = g;
+      octx.fillRect(x, y, bw * fill, bh);
+      octx.restore();
+    }
+    // marcas de segmentos
+    octx.strokeStyle = "rgba(33,37,41,0.55)";
+    octx.lineWidth = 2 * k;
+    for (let i = 1; i < 10; i++) {
+      octx.beginPath();
+      octx.moveTo(x + (bw * i) / 10, y);
+      octx.lineTo(x + (bw * i) / 10, y + bh);
+      octx.stroke();
+    }
+    // porcentaje y cuenta regresiva
+    octx.font = `800 ${Math.round(16 * k)}px Inter, Archivo, Arial`;
+    octx.fillStyle = "#fff";
+    octx.fillText(`${Math.round(fill * 100)} %`, w / 2, y + bh / 2 + 1);
+    octx.font = `500 ${Math.round(15 * k)}px "JetBrains Mono", monospace`;
+    octx.fillStyle = "#fff";
+    octx.strokeStyle = "rgba(33,37,41,0.8)";
+    octx.lineWidth = 5 * k;
+    const msg = `el rayo sale en ${Math.max(0, Math.ceil(secsLeft))} s`;
+    octx.strokeText(msg, w / 2, y + bh + 26 * k);
+    octx.fillText(msg, w / 2, y + bh + 26 * k);
+    octx.restore();
   }
 
   /* ---------- loop ---------- */
@@ -668,27 +704,34 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     const running = !paused && clock.step(dt);
-    if (running) t += dt;
+    if (running) {
+      t += dt;
+      advance(dt);
+    }
     const e = clock.elapsed;
-    const s = sAt(e);
     const u = Math.min(0.999, s / L);
     railU.uProg.value = u;
-    railU.uTime.value = now / 1000;
+    railU.uTime.value = now / 1000 * (1 + boostK);
+    const fov = 55 + boostK * 12 + (clock.phase === 3 && !ended ? 10 : 0);
+    if (Math.abs(camera.fov - fov) > 0.05) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
 
     const p = curve.getPointAt(u);
     const tg = curve.getTangentAt(u);
     const right = new THREE.Vector3(-tg.z, 0, tg.x).normalize();
     laneX += (lane - laneX) * Math.min(1, dt * 12);
     const jt = t - jumpT;
-    const jumpY = jt < 0.62 ? Math.sin((jt / 0.62) * Math.PI) * 2.7 : 0;
+    let jumpY = jt < 0.62 ? Math.sin((jt / 0.62) * Math.PI) * 2.7 : 0;
+    if (ended && outroT >= 0 && lives > 0) jumpY = Math.abs(Math.sin(outroT * 4.2)) * 2.2;
     const bob = opts.reducedMotion ? 0 : Math.sin(now / 300) * 0.15;
     bgen.position.copy(p).addScaledVector(right, laneX * LANE_W).setY(2.3 + jumpY + bob);
     shadowDisc.position.set(bgen.position.x, 0.12, bgen.position.z);
     (shadowDisc.material as THREE.MeshBasicMaterial).opacity = 0.2 - jumpY * 0.04;
     bgen.quaternion.copy(camera.quaternion);
     bgen.visible = !(t < invulnUntil && Math.floor(t * 12) % 2 === 0);
-    auraMat.opacity = t < autoUntil || t < orqUntil ? 0.8 : clock.phase >= 1 ? 0.35 : 0;
-    aura.visible = auraMat.opacity > 0;
+    auraK = t < autoUntil || t < orqUntil ? 1 : clock.phase >= 1 ? 0.4 : 0;
     ghosts.forEach((g, i) => {
       g.visible = t < orqUntil;
       if (g.visible) {
@@ -710,8 +753,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const inView = ds < 75 && ds > -8 && !(it.done && (it.kind === "conector" || it.kind === "auto" || it.kind === "orq" || ds < -6));
       if (it.obj.visible !== inView && !(it.done && it.obj.visible === false)) it.obj.visible = inView;
       if (!inView) continue;
-      if (it.kind === "conector" || it.kind === "auto" || it.kind === "orq") it.obj.rotation.y += dt * 3;
+      if (it.kind === "conector" || it.kind === "auto" || it.kind === "orq") {
+        it.obj.rotation.y += dt * 3;
+        it.obj.position.y = it.baseY + Math.sin(now / 350 + it.phase) * 0.18;
+      }
       if (it.kind === "fantasma") it.obj.position.y = it.baseY + Math.sin(now / 400 + it.phase) * 0.35;
+      if (it.kind === "mail" || it.kind === "caja" || it.kind === "excel") it.obj.rotation.z = Math.sin(now / 500 + it.phase) * 0.04;
+      it.tick?.(now, it.phase);
       if (it.kind === "factura") {
         const fall = Math.max(0, Math.min(1, (24 - ds) / 10));
         it.obj.position.y = it.baseY + (1 - fall) * 12;
@@ -752,6 +800,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       expr = "concentrado";
       if (!beamFired && e >= opts.durationSec - 2.6) {
         beamFired = true;
+        hooks.stage(null);
+        sfx("g.beam");
+        window.setTimeout(() => sfx("g.bell", { volume: 0.7 }), 500);
         const g = scorer.hit(1000 + charge * 15, t, false);
         const sp = project(new THREE.Vector3(-29, 30, -29));
         popups.add(sp.x, sp.y, `¡Rayo! +${g}`, COLORS.naranja);
@@ -760,15 +811,25 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     if (beamFired) {
-      const from = bgen.position.clone();
-      const to = new THREE.Vector3(-29, 30, -29);
-      const mid = from.clone().add(to).multiplyScalar(0.5);
-      beam.position.copy(mid);
-      beam.lookAt(to);
-      beam.rotateX(Math.PI / 2);
-      const w = 0.5 + Math.min(2.2, charge / 18);
-      beam.scale.set(w, from.distanceTo(to), w);
-      (beam.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - (e - (opts.durationSec - 2.6)) / 2.4) * 0.9;
+      const k = Math.max(0, 1 - (e - (opts.durationSec - 2.6)) / 2.4); // 1 → 0 mientras dura
+      const from = bgen.position.clone().setY(bgen.position.y + 1);
+      const to = new THREE.Vector3(-29, 40, -29);
+      const power = 0.6 + Math.min(1.6, charge / 25);
+      if (k > 0 && Math.floor(now / 45) !== boltSeed) {
+        boltSeed = Math.floor(now / 45);
+        const c = buildBolt(from, to, 2.4 * power, boltSeed);
+        boltCore.geometry.dispose();
+        boltHalo.geometry.dispose();
+        boltCore.geometry = new THREE.TubeGeometry(c, 48, 0.22 * power, 6, false);
+        boltHalo.geometry = new THREE.TubeGeometry(c, 48, 0.9 * power, 6, false);
+      }
+      const flick = 0.75 + 0.25 * Math.sin(now / 23);
+      (boltCore.material as THREE.MeshBasicMaterial).opacity = k * flick;
+      (boltHalo.material as THREE.MeshBasicMaterial).opacity = k * 0.55 * flick;
+      (flash.material as THREE.SpriteMaterial).opacity = Math.min(1, k * 1.4);
+      flash.scale.setScalar(18 * power * (0.8 + 0.4 * flick) * (0.5 + k * 0.5));
+      // sacudida de cámara al impacto
+      shake = Math.max(shake, k * 0.9);
     }
 
     // métrica
@@ -776,27 +837,52 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (running) hooks.metric(`${Math.round(pct * 100)}%`, pct);
 
     if (clock.done && !ended) {
+      // cierre (12 s): BGen festeja frente a la Casa Central encendida, mensaje legible y recién después el resultado
       ended = true;
+      outroT = 0;
+      expr = "logro";
+      sfx("g.win");
       const final = (finalPower[0] + finalPower[1] + finalPower[2] + 1) / 4;
-      window.setTimeout(() => hooks.end({ score: scorer.score, metricValue: `${Math.round(final * 100)}%`, metricPct: final }), 1200);
+      const pct = Math.round(final * 100);
+      const areas = (["ventas", "operaciones", "finanzas"] as const).map((id, i) => `${ZONE_NAME[id]} ${Math.round(finalPower[i] * 100)}%`).join(" · ");
+      window.setTimeout(() => hooks.stage("outro", { title: `¡Compañía conectada al ${pct}%!`, text: `Integraste ${areas}. Esto es lo que BGenAI puede hacer en tu empresa.` }), 900);
+      window.setTimeout(() => {
+        hooks.stage(null);
+        hooks.end({ score: scorer.score, metricValue: `${pct}%`, metricPct: final });
+      }, 12000);
     }
+    if (ended && !paused) outroT += dt;
 
     // cámara: seguimiento ↔ vista de maqueta
     const sc = showcase && t < showcase.until ? zones[showcase.zone] : null;
-    if (clock.phase === 3 || ended) {
-      desiredPos.set(-29 + 62, 60, -29 + 70);
-      desiredLook.set(-29, 18, -29);
+    if (LINEUP) {
+      const a = curve.getPointAt(16 / L), b = curve.getPointAt(4 / L);
+      desiredPos.copy(b).setY(4.2);
+      desiredLook.copy(a).setY(1.3);
+    } else if (clock.phase === 3 && !ended) {
+      // detrás de BGen, bajo y mirando a la Casa Central: se ve a BGen, el Caos y el rayo
+      desiredPos.copy(bgen.position).add(new THREE.Vector3(0, 9, -22));
+      desiredLook.set(-29, 10, -29);
+    } else if (ended && lives > 0) {
+      const a = -0.5 + outroT * 0.12;
+      desiredPos.copy(bgen.position).add(new THREE.Vector3(Math.sin(a) * 12, 4.5, -Math.cos(a) * 12));
+      desiredLook.copy(bgen.position).add(new THREE.Vector3(0, 3, 6));
     } else if (sc) {
       desiredPos.copy(sc.center).add(new THREE.Vector3(40, 44, 40));
       desiredLook.copy(sc.center).setY(6);
     } else {
-      desiredPos.copy(bgen.position).addScaledVector(tg, -12.5).setY(8.2 + jumpY * 0.3);
-      desiredLook.copy(bgen.position).addScaledVector(tg, 10).setY(1.8);
+      desiredPos.copy(bgen.position).addScaledVector(tg, -12.5 - boostK * 2.5).setY(8.2 + jumpY * 0.3 - boostK * 0.8);
+      desiredLook.copy(bgen.position).addScaledVector(tg, 10 + boostK * 6).setY(1.8);
     }
     const k = 1 - Math.exp(-dt * (sc || clock.phase === 3 ? 2.2 : 5));
     camPos.lerp(desiredPos, k);
     camLook.lerp(desiredLook, k);
     camera.position.copy(camPos);
+    if (shake > 0.001 && !opts.reducedMotion) {
+      camera.position.x += (Math.random() - 0.5) * shake;
+      camera.position.y += (Math.random() - 0.5) * shake * 0.6;
+      shake *= Math.exp(-dt * 6);
+    }
     camera.lookAt(camLook);
     const fovTarget = (t < autoUntil ? 64 : 55) + (camera.aspect < 1.2 ? 13 : 0);
     if (Math.abs(camera.fov - fovTarget) > 0.1) {
@@ -811,6 +897,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     octx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     octx.clearRect(0, 0, overlay.width, overlay.height);
     popups.draw(octx, dt, Math.max(0.8, overlay.clientWidth / 1200));
+    if (clock.phase === 3 && !beamFired && !ended) drawChargeMeter(overlay.clientWidth, overlay.clientHeight, Math.max(0.8, overlay.clientWidth / 1200), (opts.durationSec - 2.6) - e);
     raf = requestAnimationFrame(frame);
   }
   raf = requestAnimationFrame(frame);
@@ -819,6 +906,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     pause(p: boolean) {
       paused = p;
       clock.paused = p;
+    },
+    skipTo(p) {
+      if (p <= clock.phase || arrived) return;
+      s = SB[p] + 0.01;
+      clock.elapsed = T[p];
+      if (p === 3) arrive();
+      else while (clock.phase < p) clock.setPhase((clock.phase + 1) as PhaseIndex);
     },
     destroy() {
       cancelAnimationFrame(raf);

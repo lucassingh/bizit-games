@@ -6,7 +6,7 @@
 
 export type GameId = "compania" | "deploy" | "central";
 
-export type Gesture = "swipe-h" | "tap" | "drag-release" | "tap-area" | "tap-fast";
+export type Gesture = "swipe-h" | "tap" | "drag-release" | "tap-area" | "tap-fast" | "hold-up";
 
 export interface GameInfo {
   id: GameId;
@@ -17,7 +17,8 @@ export interface GameInfo {
   howTo: string;
   /** Objetivo de cada fase (Drive, Foundation, Evolution). */
   steps: [string, string, string];
-  controls: { gesture: Gesture; label: string }[];
+  /** `short`: nombre corto para la leyenda del HUD (una o dos palabras). */
+  controls: { gesture: Gesture; label: string; short: string }[];
   /** Etiqueta de la métrica estrella que muestra el HUD. */
   metricLabel: string;
   accent: string;
@@ -31,10 +32,11 @@ export const GAMES: Record<GameId, GameInfo> = {
     tagline: "Recorré la empresa y conectá cada área.",
     mission: "conectar la compañía",
     howTo: "BGen corre solo por el riel de datos. Vos lo movés de carril, esquivás los Problemones y juntás conectores.",
-    steps: ["Integrá Ventas", "Poné en marcha Operaciones", "Ordená Finanzas y llegá al HQ"],
+    steps: ["Integrá Ventas", "Poné en marcha Operaciones", "Ordená Finanzas y llegá a la Casa Central"],
     controls: [
-      { gesture: "swipe-h", label: "Deslizá para cambiar de carril" },
-      { gesture: "tap", label: "Tocá para saltar" },
+      { gesture: "swipe-h", label: "Deslizá para cambiar de carril", short: "Carril" },
+      { gesture: "tap", label: "Tocá para saltar", short: "Saltar" },
+      { gesture: "hold-up", label: "Mantené arriba: turbo", short: "Turbo" },
     ],
     metricLabel: "Compañía conectada",
     accent: "#F75D00",
@@ -48,8 +50,8 @@ export const GAMES: Record<GameId, GameInfo> = {
     howTo: "Arrastrá hacia atrás para tensar la gomera y soltá. Mientras vuela, tocá la pantalla para usar la habilidad del agente.",
     steps: ["Tu primer agente", "Un equipo con habilidades", "El orquestador contra el Caos"],
     controls: [
-      { gesture: "drag-release", label: "Arrastrá y soltá para lanzar" },
-      { gesture: "tap", label: "Tocá en el aire: habilidad" },
+      { gesture: "drag-release", label: "Arrastrá y soltá para lanzar", short: "Lanzar" },
+      { gesture: "tap", label: "Tocá en el aire: habilidad", short: "Habilidad" },
     ],
     metricLabel: "Problemas eliminados",
     accent: "#662D91",
@@ -63,8 +65,8 @@ export const GAMES: Record<GameId, GameInfo> = {
     howTo: "Las tareas llegan sin parar. Tocá el área correcta para cada una y después dejá que BGen automatice los flujos.",
     steps: ["Repartí a mano", "Automatizá los flujos", "Atendé solo lo importante"],
     controls: [
-      { gesture: "tap-area", label: "Tocá el área de la tarea" },
-      { gesture: "tap-fast", label: "Al final: tocá rápido ORQUESTAR" },
+      { gesture: "tap-area", label: "Tocá el área de la tarea", short: "Asignar" },
+      { gesture: "tap-fast", label: "Al final: tocá rápido ORQUESTAR", short: "Orquestar" },
     ],
     metricLabel: "Automatizado",
     accent: "#0AB6BC",
