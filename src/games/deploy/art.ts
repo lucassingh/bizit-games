@@ -384,8 +384,8 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
     ctx.moveTo(sx - 4, ground - 76);
     ctx.lineTo(sx - 4, sy + 70);
     ctx.stroke();
-    // cartel de madera "DEPLOY" clavado a un poste, al pie de la gomera
-    drawWoodSign(ctx, sx + 92, ground, "DEPLOY");
+    // cartel de madera clavado a un poste, al pie de la gomera
+    drawWoodSign(ctx, sx + 92, ground, "CAOS");
   } else {
     // puntas de las horquillas con cuero
     for (const x of [sx - 36, sx + 36]) {

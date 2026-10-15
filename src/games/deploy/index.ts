@@ -478,7 +478,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   totalEnemies = 3 + 4 + 4;
   buildLevel(0);
   metric();
-  say("curioso", "¡Hora de hacer un deploy! Arrastrá hacia atrás y soltá.");
+  say("curioso", "¡A derribar la torre! Arrastrá hacia atrás y soltá.");
 
   /* ---------- simulación ---------- */
   const LEVEL_END = [25, 55, opts.durationSec];

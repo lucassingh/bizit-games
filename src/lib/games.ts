@@ -44,8 +44,8 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   deploy: {
     id: "deploy",
-    name: "Deploy BGen",
-    tagline: "Lanzá a BGen y derribá la Torre del Caos.",
+    name: "Torre del Caos",
+    tagline: "Lanzá a tus agentes y derribá la torre.",
     mission: "derribar la Torre del Caos",
     howTo: "Arrastrá hacia atrás para tensar la gomera y soltá. Mientras vuela, tocá la pantalla para usar la habilidad del agente.",
     steps: ["Tu primer agente", "Un equipo con habilidades", "El orquestador contra el Caos"],
@@ -59,7 +59,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   central: {
     id: "central",
-    name: "Bandeja BGen",
+    name: "Lluvia de Tareas",
     tagline: "De manual a automático: atrapá las tareas antes de que desborden al equipo.",
     mission: "automatizar la empresa",
     howTo: "Las tareas caen sobre los escritorios. Movés a BGen arrastrando el dedo y dispara solo, todo el tiempo: automatizá cada tarea antes de que llegue al equipo. Los documentos dorados valen triple; los DELETE no se tocan.",
