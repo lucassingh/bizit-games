@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trophy } from "lucide-react";
 import BGen from "../BGen";
 import Header from "../Header";
 import { BIZIT_MARK_PATH } from "@/lib/brand";
@@ -70,7 +71,9 @@ export default function Attract({ config }: { config: KioskConfig }) {
           <aside className={`panel ${s.rankPanel}`} onClick={(e) => e.stopPropagation()} aria-label="Ranking de hoy">
             <div className={s.rankHead}>
               <h3>Ranking de hoy</h3>
-              <span className="eyebrow">🏆 Top 20</span>
+              <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Trophy size={14} strokeWidth={2.4} color="var(--orange)" /> Top 20
+              </span>
             </div>
             <div className={`${s.rankList} scroll-subtle`}>
               {ranking.length === 0 && <p className={s.empty}>Todavía nadie jugó hoy. ¡Sé el primero!</p>}

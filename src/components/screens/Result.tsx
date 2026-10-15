@@ -1,42 +1,89 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { Clock, Medal, Trophy } from "lucide-react";
 import BGen from "../BGen";
 import Header from "../Header";
 import { accentVars, GAMES } from "@/lib/games";
 import { LEVEL_COPY } from "@/lib/scoring";
 import { useSession } from "@/lib/store";
 import { abandon } from "../Experience";
-import s from "./screens.module.css";
+import r from "./result.module.css";
 
 const CTA_URL = process.env.NEXT_PUBLIC_CTA_URL || "https://bgenai.bizitglobal.com/";
-const AUTO_MS = 30000;
+const AUTO_MS = 40000;
 
-function Star({ on, delay }: { on: boolean; delay: number }) {
+/**
+ * Secuencia (ms desde que entra la pantalla):
+ *  0    sello "¡NIVEL COMPLETO!" cae con golpe
+ *  500  estrellas, una por una, con destello
+ *  1500 puntaje cuenta desde cero (1,4 s)
+ *  3000 nivel + frase
+ *  3500 medallas
+ *  4000 CTA y botones
+ */
+const T = { stamp: 0, stars: 500, score: 1500, level: 3000, medals: 3500, cta: 4000 };
+
+function useStage() {
+  const [ms, setMs] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = () => {
+      const e = performance.now() - t0;
+      setMs(e);
+      if (e < 6000) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return ms;
+}
+
+function CountUp({ to, start, duration = 1400 }: { to: number; start: boolean; duration?: number }) {
+  const [v, setV] = useState(0);
+  const done = useRef(false);
+  useEffect(() => {
+    if (!start || done.current) return;
+    done.current = true;
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / duration);
+      const e = 1 - Math.pow(1 - k, 3);
+      setV(Math.round(to * e));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [start, to, duration]);
+  return <>{v.toLocaleString("es-AR")}</>;
+}
+
+function Star({ on, show }: { on: boolean; show: boolean }) {
   return (
-    <svg viewBox="0 0 100 100" style={{ animationDelay: `${delay}s` }} aria-hidden="true">
-      <path
-        d="M50 6 L62 36 L94 38 L69 59 L77 92 L50 74 L23 92 L31 59 L6 38 L38 36 Z"
-        fill={on ? "url(#star-g)" : "#E6E1DC"}
-        stroke={on ? "#b84400" : "#d3cbc2"}
-        strokeWidth="5"
-        strokeLinejoin="round"
-      />
-      <defs>
-        <linearGradient id="star-g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFB13B" />
-          <stop offset="1" stopColor="#F75D00" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <span className={`${r.star} ${show ? r.starIn : ""} ${on ? r.starOn : ""}`}>
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="star-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFC24A" />
+            <stop offset="1" stopColor="#F75D00" />
+          </linearGradient>
+        </defs>
+        <path d="M50 6 L62 36 L94 38 L69 59 L77 92 L50 74 L23 92 L31 59 L6 38 L38 36 Z" fill={on ? "url(#star-g)" : "#E9E4DE"} stroke={on ? "#b84400" : "#d5cec6"} strokeWidth="5" strokeLinejoin="round" />
+        {on && <path d="M38 34 L46 20" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".8" />}
+      </svg>
+      {on && show && <i className={r.burst} aria-hidden="true" />}
+    </span>
   );
 }
 
-/** Resultado con estética de "nivel completo" + diagnóstico + CTA comercial. */
+/** Resultado con secuencia de "nivel completo", diagnóstico y CTA comercial. */
 export default function Result() {
   const { result, player, go } = useSession();
   const [qr, setQr] = useState("");
+  const ms = useStage();
 
   useEffect(() => {
     QRCode.toString(CTA_URL, { type: "svg", margin: 0, color: { dark: "#212529", light: "#ffffff" } }).then(setQr).catch(() => setQr(""));
@@ -45,68 +92,61 @@ export default function Result() {
   if (!result) return null;
   const g = GAMES[result.game];
   const copy = LEVEL_COPY[result.level];
+  const at = (k: keyof typeof T) => ms >= T[k];
+
   return (
     <section className="frame" style={accentVars(result.game) as React.CSSProperties}>
       <div className="sheet">
-        <div className={s.dots} />
         <Header />
-        <div className={s.resultGrid}>
-          <div className={`panel ${s.resultPanel}`}>
-            <div className={s.panelTitleWrap}>
-              <span className="panel-title" style={{ fontSize: "calc(19 * var(--u))", padding: "calc(10 * var(--u)) calc(26 * var(--u))" }}>
-                ¡Nivel completo!
-              </span>
+        <div className={r.grid}>
+          <div className={r.main}>
+            <div className={`${r.stamp} ${at("stamp") ? r.stampIn : ""}`}>
+              <span>¡Nivel completo!</span>
             </div>
-            <div className={s.stars}>
+
+            <div className={r.stars}>
               {[1, 2, 3].map((i) => (
-                <Star key={i} on={result.stars >= i} delay={0.2 + i * 0.18} />
+                <Star key={i} on={result.stars >= i} show={ms >= T.stars + (i - 1) * 260} />
               ))}
             </div>
-            <span className="eyebrow">{player ? `${player.firstName}, tu puntaje en ${g.name}` : `Tu puntaje en ${g.name}`}</span>
-            <span className={s.bigScore}>{result.score.toLocaleString("es-AR")}</span>
-            <p className={s.levelName}>
-              Nivel <span>{copy.title}</span>
-            </p>
-            <p className={s.phrase}>{copy.phrase}</p>
-            <div className={s.statsRow}>
-              <div className="stat">
-                <span className="stat-icon">🏆</span>
-                <span>
-                  <span className={s.statLabel}>Ranking de hoy</span>
-                  <span className="stat-value">
-                    #{result.rank}
-                    <small style={{ fontSize: "0.5em", color: "var(--muted)" }}> de {result.total}</small>
-                  </span>
-                </span>
-              </div>
-              <div className="stat">
-                <span className="stat-icon" style={{ background: "var(--grad-ia)", color: "var(--negro)" }}>
-                  ⏱
-                </span>
-                <span>
-                  <span className={s.statLabel}>Horas ahorradas/mes*</span>
-                  <span className="stat-value">{result.hours} h</span>
-                </span>
-              </div>
-              <div className="stat">
-                <span className="stat-icon">★</span>
-                <span>
-                  <span className={s.statLabel}>{result.metricLabel}</span>
-                  <span className="stat-value">{result.metricValue}</span>
-                </span>
-              </div>
+
+            <div className={`${r.scoreBlock} ${at("score") ? r.in : ""}`}>
+              <span className={r.scoreLabel}>{player ? `${player.firstName}, tu puntaje en ${g.name}` : `Tu puntaje en ${g.name}`}</span>
+              <span className={r.score}>
+                <CountUp to={result.score} start={at("score")} />
+              </span>
             </div>
-            <small style={{ color: "var(--muted)" }}>*Estimación lúdica según tu puntaje.</small>
+
+            <div className={`${r.level} ${at("level") ? r.in : ""}`}>
+              <span className={r.levelTag}>Nivel de madurez IA</span>
+              <span className={r.levelName}>{copy.title}</span>
+              <p className={r.phrase}>{copy.phrase}</p>
+            </div>
+
+            <div className={r.medals}>
+              {[
+                { icon: <Trophy />, label: "Ranking de hoy", value: `#${result.rank}`, sub: `de ${result.total}`, tone: r.toneOrange },
+                { icon: <Clock />, label: "Horas ahorradas/mes", value: `${result.hours} h`, sub: "estimación", tone: r.toneIa },
+                { icon: <Medal />, label: result.metricLabel, value: result.metricValue, sub: g.name, tone: r.toneInk },
+              ].map((m, i) => (
+                <div key={m.label} className={`${r.medal} ${m.tone} ${ms >= T.medals + i * 180 ? r.in : ""}`}>
+                  <span className={r.medalIcon}>{m.icon}</span>
+                  <span className={r.medalValue}>{m.value}</span>
+                  <span className={r.medalLabel}>{m.label}</span>
+                  <span className={r.medalSub}>{m.sub}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className={s.resultSide}>
-            <BGen expr="logro" size="min(20vh, 180px)" aura talkKey="fin" />
-            <div className={`panel ${s.cta}`}>
+          <div className={`${r.side} ${at("cta") ? r.in : ""}`}>
+            <BGen expr="logro" size="min(20vh, 170px)" aura talkKey="fin" />
+            <div className={`panel ${r.cta}`}>
               <h3>Un especialista de Bizit te va a contactar para tu discovery gratuito</h3>
-              {qr && <div className={s.qr} dangerouslySetInnerHTML={{ __html: qr }} aria-label="QR a bgenai.bizitglobal.com" />}
+              {qr && <div className={r.qr} dangerouslySetInnerHTML={{ __html: qr }} aria-label="QR a bgenai.bizitglobal.com" />}
               <span className="eyebrow">Escaneá y conocé BGenAI</span>
             </div>
-            <div className={s.resultActions}>
+            <div className={r.actions}>
               <button className="btn btn-light" onClick={() => go("select")}>
                 Jugar de nuevo
               </button>
@@ -116,9 +156,11 @@ export default function Result() {
             </div>
           </div>
         </div>
-        <div className={s.autoBar}>
-          <i style={{ animationDuration: `${AUTO_MS}ms` }} />
-        </div>
+        {at("cta") && (
+          <div className={r.autoBar}>
+            <i style={{ animationDuration: `${AUTO_MS - T.cta}ms` }} />
+          </div>
+        )}
       </div>
     </section>
   );

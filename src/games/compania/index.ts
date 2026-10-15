@@ -584,12 +584,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         it.obj.visible = false;
         if (it.kind === "auto") {
           autoUntil = t + 4;
-          say("procesando", "⚡ ¡Automatización! Atravieso todo.", 4);
+          say("procesando", "¡Automatización! Atravieso todo.", 4);
         } else {
           orqUntil = t + 5;
-          say("logro", "🎛️ ¡Modo orquestador! Tres BGens a la vez.", 5);
+          say("logro", "¡Modo orquestador! Tres BGens a la vez.", 5);
         }
-        hooks.hint(it.kind === "auto" ? "⚡ AUTOMATIZACIÓN" : "🎛️ ORQUESTADOR");
+        hooks.hint(it.kind === "auto" ? "AUTOMATIZACIÓN" : "ORQUESTADOR");
         continue;
       }
       // obstáculo
