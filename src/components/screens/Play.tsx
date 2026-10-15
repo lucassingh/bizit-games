@@ -39,6 +39,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   const [showGestures, setShowGestures] = useState(true);
   const [loading, setLoading] = useState(true);
   const [over, setOver] = useState<GameOutcome | null>(null);
+  const [stage, setStage] = useState<{ s: "charge" | "outro"; detail?: { title: string; text: string } } | null>(null);
   const instRef = useRef<GameInstance | null>(null);
   const g = GAMES[game];
 
@@ -56,6 +57,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       banner: (title, subtitle) => setBanner({ title, subtitle, id: ++n }),
       hint: (text) => setHint({ text, id: ++n }),
       lives: (lives) => useHud.getState().patch({ lives }),
+      stage: (s, detail) => setStage(s ? { s, detail } : null),
       gameOver: (outcome) => {
         if (disposed) return;
         sfx("g.fail", { volume: 0.9, rate: 0.8 });
@@ -162,6 +164,19 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
         {hint && (
           <div key={hint.id} className={p.hint}>
             {hint.text}
+          </div>
+        )}
+        {stage?.s === "charge" && (
+          <div className={p.charge} aria-hidden="true">
+            <GestureIcon gesture="tap-fast" size={layout === "tv" ? 120 : 96} />
+            <span>¡Tocá rápido!</span>
+          </div>
+        )}
+        {stage?.s === "outro" && stage.detail && (
+          <div className={p.outro} role="status">
+            <span className={p.outroTag}>Juego terminado</span>
+            <strong>{stage.detail.title}</strong>
+            <p>{stage.detail.text}</p>
           </div>
         )}
       </div>

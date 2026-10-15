@@ -330,6 +330,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
   let boltSeed = 0;
   let shake = 0;
+  let outroT = -1;
   const smoke = Array.from({ length: 14 }, (_, i) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: "#ffffff", transparent: true, opacity: 0 }));
     m.userData = { x: i % 2 ? 20 : 25, z: i % 2 ? 22 : 24, base: i % 2 ? 17 : 15, k: (i / 14) * 1 };
@@ -426,6 +427,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     }
     clock.elapsed = T[3]; // el Caos dura siempre lo nominal (D − T[3] = 10 s)
     if (clock.phase < 3) clock.setPhase(3);
+    hooks.stage("charge");
   }
   /** Avanza por el riel; cambia de fase al cruzar cada tramo y llega a la Casa Central. */
   function advance(dt: number) {
@@ -513,13 +515,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         it.done = true;
         continue;
       }
-      const inLane = t < orqUntil || it.lanes.some((l) => Math.abs(laneX - l) < 0.42);
+      const inLane = it.lanes.some((l) => Math.abs(laneX - l) < 0.42);
       if (!inLane) continue;
       if (it.kind === "conector") {
         it.done = true;
         it.obj.visible = false;
         conGot[it.sec]++;
-        scorer.hit(10, t);
+        scorer.hit(t < orqUntil ? 20 : 10, t);
         sfx(`g.coin${Math.min(4, scorer.combo)}` as "g.coin1", { volume: 0.55 });
         continue;
       }
@@ -532,7 +534,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           say("procesando", "¡Automatización! Atravieso todo.", 4);
         } else {
           orqUntil = t + 5;
-          say("logro", "¡Modo orquestador! Tres BGens a la vez.", 5);
+          say("logro", "¡Modo orquestador! Puntos dobles y nada me frena.", 5);
         }
         hooks.hint(it.kind === "auto" ? "AUTOMATIZACIÓN" : "ORQUESTADOR");
         continue;
@@ -721,7 +723,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const right = new THREE.Vector3(-tg.z, 0, tg.x).normalize();
     laneX += (lane - laneX) * Math.min(1, dt * 12);
     const jt = t - jumpT;
-    const jumpY = jt < 0.62 ? Math.sin((jt / 0.62) * Math.PI) * 2.7 : 0;
+    let jumpY = jt < 0.62 ? Math.sin((jt / 0.62) * Math.PI) * 2.7 : 0;
+    if (ended && outroT >= 0 && lives > 0) jumpY = Math.abs(Math.sin(outroT * 4.2)) * 2.2;
     const bob = opts.reducedMotion ? 0 : Math.sin(now / 300) * 0.15;
     bgen.position.copy(p).addScaledVector(right, laneX * LANE_W).setY(2.3 + jumpY + bob);
     shadowDisc.position.set(bgen.position.x, 0.12, bgen.position.z);
@@ -797,6 +800,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       expr = "concentrado";
       if (!beamFired && e >= opts.durationSec - 2.6) {
         beamFired = true;
+        hooks.stage(null);
         sfx("g.beam");
         window.setTimeout(() => sfx("g.bell", { volume: 0.7 }), 500);
         const g = scorer.hit(1000 + charge * 15, t, false);
@@ -833,10 +837,21 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (running) hooks.metric(`${Math.round(pct * 100)}%`, pct);
 
     if (clock.done && !ended) {
+      // cierre: BGen festeja frente a la Casa Central encendida, mensaje y recién después el resultado
       ended = true;
+      outroT = 0;
+      expr = "logro";
+      sfx("g.win");
       const final = (finalPower[0] + finalPower[1] + finalPower[2] + 1) / 4;
-      window.setTimeout(() => hooks.end({ score: scorer.score, metricValue: `${Math.round(final * 100)}%`, metricPct: final }), 1200);
+      const pct = Math.round(final * 100);
+      const areas = (["ventas", "operaciones", "finanzas"] as const).map((id, i) => `${ZONE_NAME[id]} ${Math.round(finalPower[i] * 100)}%`).join(" · ");
+      window.setTimeout(() => hooks.stage("outro", { title: `¡Compañía conectada al ${pct}%!`, text: `Integraste ${areas}. Esto es lo que BGenAI puede hacer en tu empresa.` }), 900);
+      window.setTimeout(() => {
+        hooks.stage(null);
+        hooks.end({ score: scorer.score, metricValue: `${pct}%`, metricPct: final });
+      }, 7000);
     }
+    if (ended && !paused) outroT += dt;
 
     // cámara: seguimiento ↔ vista de maqueta
     const sc = showcase && t < showcase.until ? zones[showcase.zone] : null;
@@ -848,9 +863,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       // detrás de BGen, bajo y mirando a la Casa Central: se ve a BGen, el Caos y el rayo
       desiredPos.copy(bgen.position).add(new THREE.Vector3(0, 9, -22));
       desiredLook.set(-29, 10, -29);
-    } else if (ended) {
-      desiredPos.set(-29 + 52, 52, -29 - 62);
-      desiredLook.set(-29, 20, -29);
+    } else if (ended && lives > 0) {
+      const a = -0.5 + outroT * 0.12;
+      desiredPos.copy(bgen.position).add(new THREE.Vector3(Math.sin(a) * 12, 4.5, -Math.cos(a) * 12));
+      desiredLook.copy(bgen.position).add(new THREE.Vector3(0, 3, 6));
     } else if (sc) {
       desiredPos.copy(sc.center).add(new THREE.Vector3(40, 44, 40));
       desiredLook.copy(sc.center).setY(6);
