@@ -26,8 +26,8 @@ const W = 1600, H = 700;
 const FLOOR = 600;
 const BY = FLOOR + 38; // BGen en la vereda
 const R = 46;
-const BOLT_SPEED = 1100;
-const FIRE_EVERY = 0.32;
+const BOLT_SPEED = 1250;
+const FIRE_EVERY = 0.26;
 
 type Drop = {
   kind: EnemyKind | "vip" | "bomb" | "team" | "orq";
@@ -64,8 +64,8 @@ const PHASE_KINDS: (EnemyKind | "vip" | "bomb")[][] = [
   ["mail", "excel", "factura", "reporte", "vip", "vip", "bomb"],
   ["mail", "excel", "factura", "fantasma", "reporte", "bomb"],
 ];
-const PHASE_EVERY = [1.15, 0.85, 0.62, 0.3];
-const PHASE_FALL = [150, 200, 260, 330];
+const PHASE_EVERY = [1.35, 1.0, 0.8, 0.34];
+const PHASE_FALL = [130, 165, 210, 300];
 const ZONE_NAME = ["Ventas", "Operaciones", "Finanzas", "Casa Central"];
 /** El equipo esperando en la puerta de la torre. */
 const TEAM = [640, 700, 900, 960];
@@ -101,7 +101,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const deskMood = TEAM.map(() => 0.2);
   const deskShake = TEAM.map(() => 0);
   const WINS = towerWindows(W, FLOOR);
-  let powerSpawned = [false, false];
+  let powerSpawned = [false, false, false];
 
   const say = (e: Expr, text?: string, hold = 1.2) => {
     expr = e;
@@ -114,7 +114,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const pts = scorer.hit(300, t, false);
       popups.add(W / 2, 250, `¡${ZONE_NAME[p - 1]} automatizada! +${pts}`, COLORS.naranja);
       sfx("g.phase");
-      say("logro", p === 1 ? "¡Más tareas! Atento al power-up de equipo." : "¡Finanzas! Los dorados valen triple. ¡No toques los DELETE!", 3);
+      say("logro", p === 1 ? "¡Llegó el equipo de agentes! Disparo triple." : "¡Finanzas! Agarrá la corona: multitiro. ¡Los DELETE no se tocan!", 3);
     }
     if (p === 3) {
       sfx("g.phase");
@@ -202,6 +202,14 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     hooks.lives(lives);
     scorer.miss();
     sfx("g.hit", { volume: 0.7 });
+    // respiro: lo que ya venía bajando se evapora (no cuenta) y hay 1,5 s sin tareas nuevas
+    for (const d of drops) {
+      if (d.got !== undefined || d.kind === "team" || d.kind === "orq") continue;
+      d.dead = true;
+      if (d.kind !== "bomb") total--;
+      burst(d.x, d.y, 6, ["#D9CBB0"]);
+    }
+    spawnIn = Math.max(spawnIn, 1.5);
     if (lives <= 0) {
       ended = true;
       paused = true;
@@ -231,9 +239,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       fireIn -= dt;
       if (fireIn <= 0) {
         fire();
-        if (t < wideUntil) {
-          bolts.push({ x: bx - 46, y: BY - R * 0.6 }, { x: bx + 46, y: BY - R * 0.6 });
-        }
+        if (t < wideUntil) bolts.push({ x: bx - 46, y: BY - R * 0.6 }, { x: bx + 46, y: BY - R * 0.6 });
+        if (t < orqUntil) for (const dx of [-140, -70, 70, 140]) bolts.push({ x: bx + dx, y: BY - R * 0.6 });
         fireIn = FIRE_EVERY;
       }
     }
@@ -248,13 +255,22 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       spawn();
       spawnIn = PHASE_EVERY[p] * (0.8 + rand() * 0.4);
     }
-    // power-ups una vez por fase (Foundation: equipo; Evolution: orquestador)
-    if (p === 1 && !powerSpawned[0] && clock.phaseProgress() > 0.3) {
+    // power-ups: el Equipo (disparo triple) se activa solo al entrar a Foundation y dura toda la fase;
+    // el Orquestador cae al principio de Evolution y de nuevo a la mitad
+    if (p === 1 && !powerSpawned[0]) {
       powerSpawned[0] = true;
-      spawn("team");
+      wideUntil = clock.elapsed + 999; // se corta al entrar a Evolution
+      sfx("g.power");
+      hooks.hint("EQUIPO DE AGENTES: DISPARO TRIPLE");
+      burst(bx, BY - R, 24, [COLORS.cian, COLORS.lima, "#fff"]);
     }
-    if (p === 2 && !powerSpawned[1] && clock.phaseProgress() > 0.35) {
+    if (p >= 2 && wideUntil > 900) wideUntil = t + 1.5;
+    if (p === 2 && !powerSpawned[1] && clock.phaseProgress() > 0.05) {
       powerSpawned[1] = true;
+      spawn("orq");
+    }
+    if (p === 2 && !powerSpawned[2] && clock.phaseProgress() > 0.55) {
+      powerSpawned[2] = true;
       spawn("orq");
     }
     // el jefe baja en el Caos
@@ -308,9 +324,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         }
         if (d.kind === "orq") {
           d.dead = true;
-          orqUntil = t + 5;
+          orqUntil = t + 7;
           sfx("g.power2");
-          say("logro", "¡Modo orquestador! Todo se automatiza solo.", 3);
+          say("logro", "¡Modo orquestador! Multitiro y todo se automatiza.", 3);
           hooks.hint("ORQUESTADOR");
           burst(d.x, d.y, 30, [COLORS.naranja, COLORS.lima, "#fff"]);
           continue;
@@ -623,7 +639,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     skipTo(p) {
       if (p <= clock.phase) return;
       clock.jumpTo(p);
-      powerSpawned = [p > 1, p > 2];
+      powerSpawned = [p > 1, p > 2, p > 2];
     },
     destroy() {
       cancelAnimationFrame(raf);

@@ -140,11 +140,7 @@ export default function RenderTool() {
             if (o.position.x < 2 && o.position.z > 2 && o.position.z < 70 && !(o as { isLight?: boolean }).isLight) o.visible = false;
           }
           const hqSign = scene.getObjectByName("sign:hq");
-          if (hqSign) {
-            hqSign.position.set(-66, 2.4, -22);
-            hqSign.rotation.set(0, 0.6, 0);
-            hqSign.scale.setScalar(0.9);
-          }
+          if (hqSign) hqSign.visible = false;
           cam2.fov = 40;
           cam2.position.set(-29, 14, 62);
           cam2.lookAt(-29, 30, -29);
