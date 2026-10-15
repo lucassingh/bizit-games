@@ -80,17 +80,33 @@ export default function RenderTool() {
           z.power = 1;
           world.applyPower(z);
         }
-        const W = 3200, H = 1100;
+        const W = 3200, H = 820;
         renderer.setSize(W, H);
-        const cam = new THREE.PerspectiveCamera(31, W / H, 1, 1000);
+        const cam = new THREE.PerspectiveCamera(22, W / H, 1, 1000);
         // vista de costado desde el sur, un poco elevada: Ventas y Operaciones adelante, Casa Central y Finanzas detrás
         // sin los arcos de IA (son del juego 1)
         scene.traverse((o) => {
           const m = o as { isMesh?: boolean; geometry?: { type: string }; visible: boolean };
           if (m.isMesh && m.geometry?.type === "TubeGeometry") m.visible = false;
         });
-        cam.position.set(-8, 44, 150);
-        cam.lookAt(-6, 14, -30);
+        // carteles de frente a la cámara, más grandes y despejados (Operaciones queda detrás del tanque de agua)
+        for (const [id, dx, dz] of [
+          ["ventas", 0, 0],
+          ["operaciones", 14, 10],
+          ["finanzas", 0, 24],
+          ["hq", 6, 2],
+        ] as const) {
+          const g = scene.getObjectByName(`sign:${id}`);
+          if (!g) continue;
+          g.rotation.y = 0;
+          g.scale.setScalar(1.25);
+          g.position.x += dx;
+          g.position.z += dz;
+          g.position.y += 2;
+        }
+        // más lejos y más baja: skyline chato, ocupa menos alto (deja cielo, como en los juegos de gomera)
+        cam.position.set(-8, 34, 250);
+        cam.lookAt(-6, 18, -30);
         renderer.render(scene, cam);
         out.city = renderer.domElement.toDataURL("image/png");
         say("city ok");

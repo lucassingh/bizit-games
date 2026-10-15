@@ -75,6 +75,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let aiming: { x: number; y: number } | null = null;
   let abilityUsed = false;
   let lastHitSfx = -1;
+  let noShotsFor = 0;
   let settleTimer = 0;
   let levelStartedAt = 0;
   let killed = 0;
@@ -500,10 +501,15 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         if (settleTimer > 0.8) nextLevel("clear");
       } else if (!current && shotIndex >= LEVEL_SHOTS[level].length) {
         // sin agentes para lanzar y todavía quedan Problemones: se acabaron las vidas
-        const moving = projectiles.some((p) => p.speed > 0.6) || minis.some((p) => p.speed > 0.6);
+        const alive = new Set(Composite.allBodies(world));
+        const moving = projectiles.some((p) => alive.has(p) && p.speed > 0.6) || minis.some((p) => alive.has(p) && p.speed > 0.6);
         settleTimer += moving ? 0 : dt;
-        if (settleTimer > 1.6) gameOver();
-      } else settleTimer = 0;
+        noShotsFor += dt;
+        if (settleTimer > 1.6 || noShotsFor > 6) gameOver();
+      } else {
+        settleTimer = 0;
+        noShotsFor = 0;
+      }
     }
     if (clock.done && !ended) finishGame(0.4);
     void levelStartedAt;

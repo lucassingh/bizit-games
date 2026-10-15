@@ -169,6 +169,7 @@ export function buildWorld(scene: THREE.Scene) {
     }
     grp.position.set(x, 0.4, zz);
     grp.rotation.y = rotY;
+    grp.name = `sign:${z.id}`;
     scene.add(grp);
     z.sign = { tex, draw, lit: false };
   }

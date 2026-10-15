@@ -27,48 +27,52 @@ export const CITY_IMG = typeof Image !== "undefined" ? new Image() : (null as un
 if (CITY_IMG) CITY_IMG.src = "/sprites/deploy/city.webp";
 
 export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number, GROUND: number) {
-  // cielo
-  const sky = g.createLinearGradient(0, 0, 0, GROUND);
-  sky.addColorStop(0, "#BFE0F3");
-  sky.addColorStop(0.55, "#E6F1F6");
-  sky.addColorStop(1, "#FBF6EF");
+  // cielo amplio (como en los juegos de gomera: el aire es parte del juego)
+  const sky = g.createLinearGradient(0, -H, 0, GROUND);
+  sky.addColorStop(0, "#8EC9EC");
+  sky.addColorStop(0.5, "#BFE0F3");
+  sky.addColorStop(0.85, "#E8F2F7");
+  sky.addColorStop(1, "#F4F1EB");
   g.fillStyle = sky;
   g.fillRect(-W, -H, W * 3, GROUND + H);
   // sol
-  const sun = g.createRadialGradient(W * 0.78, 90, 10, W * 0.78, 90, 220);
-  sun.addColorStop(0, "rgba(255,221,150,0.9)");
-  sun.addColorStop(1, "rgba(255,221,150,0)");
+  const sun = g.createRadialGradient(W * 0.8, 70, 10, W * 0.8, 70, 240);
+  sun.addColorStop(0, "rgba(255,226,160,0.95)");
+  sun.addColorStop(1, "rgba(255,226,160,0)");
   g.fillStyle = sun;
-  g.fillRect(0, 0, W, 400);
-  // nubes
-  g.fillStyle = "rgba(255,255,255,0.9)";
-  for (const [x, y, s] of [
-    [180, 110, 0.9],
-    [620, 70, 0.7],
-    [1120, 120, 0.9],
-    [1480, 60, 0.6],
-  ]) {
+  g.fillRect(0, -H, W, 500);
+  // nubes grandes y blandas, en dos planos
+  const cloud = (x: number, y: number, s: number, a: number) => {
+    g.fillStyle = `rgba(255,255,255,${a})`;
     for (const [dx, dy, r] of [
-      [0, 0, 34],
-      [34, -14, 42],
-      [78, 0, 32],
-      [40, 14, 30],
+      [0, 0, 46],
+      [44, -22, 58],
+      [104, -6, 48],
+      [60, 16, 40],
+      [-30, 14, 34],
     ]) {
       g.beginPath();
       g.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
       g.fill();
     }
-  }
+  };
+  cloud(120, 150, 1.2, 0.95);
+  cloud(560, 80, 0.9, 0.9);
+  cloud(1020, 170, 1.4, 0.95);
+  cloud(1420, 90, 0.8, 0.9);
+  cloud(300, 300, 0.6, 0.5);
+  cloud(1250, 320, 0.7, 0.5);
+
   if (CITY_IMG && CITY_IMG.complete && CITY_IMG.naturalWidth) {
-    // la imagen (3200×1100) cubre todo el ancho; su base (lotes y calle) apoya sobre el piso del juego
-    const iw = W * 1.06, ih = iw * (CITY_IMG.naturalHeight / CITY_IMG.naturalWidth);
-    g.drawImage(CITY_IMG, -W * 0.03, GROUND - ih + 26, iw, ih);
-    // velo atmosférico: la ciudad queda "atrás" y la torre y los Problemones se leen adelante
-    const haze = g.createLinearGradient(0, GROUND - ih, 0, GROUND);
-    haze.addColorStop(0, "rgba(232,241,247,0.42)");
-    haze.addColorStop(1, "rgba(240,236,230,0.30)");
+    // la ciudad queda chica y lejana en el horizonte: ocupa el tercio inferior, desaturada por el aire
+    const horizon = GROUND - 14;
+    const iw = W * 1.12, ih = iw * (CITY_IMG.naturalHeight / CITY_IMG.naturalWidth);
+    g.drawImage(CITY_IMG, (W - iw) / 2, horizon - ih * 0.86, iw, ih);
+    const haze = g.createLinearGradient(0, horizon - ih, 0, horizon);
+    haze.addColorStop(0, "rgba(226,238,247,0.6)");
+    haze.addColorStop(1, "rgba(240,236,230,0.66)");
     g.fillStyle = haze;
-    g.fillRect(-W, GROUND - ih - 10, W * 3, ih + 10);
+    g.fillRect(-W, horizon - ih - 10, W * 3, ih + 10);
     drawGround(g, W, GROUND);
     return;
   }
@@ -266,16 +270,36 @@ export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number
   drawGround(g, W, GROUND);
 }
 
-/** Piso: césped, vereda y patio de asfalto con líneas de estacionamiento. */
+/** Piso: lomada de pasto y tierra, limpio para que la torre y los Problemones se lean. */
 function drawGround(g: CanvasRenderingContext2D, W: number, GROUND: number) {
-  g.fillStyle = "#CDE4BE";
-  g.fillRect(-W, GROUND, W * 3, 16);
-  g.fillStyle = "#E7E1DA";
-  g.fillRect(-W, GROUND + 16, W * 3, 14);
-  g.fillStyle = "#9A9DA6";
-  g.fillRect(-W, GROUND + 30, W * 3, 200);
-  g.fillStyle = "#E3B23C";
-  for (let k = -W; k < W * 2; k += 160) g.fillRect(k, GROUND + 60, 70, 5);
+  // pasto con borde ondulado
+  g.fillStyle = "#8CC45C";
+  g.beginPath();
+  g.moveTo(-W, GROUND + 60);
+  g.lineTo(-W, GROUND - 2);
+  for (let x = -W; x <= W * 2; x += 60) g.quadraticCurveTo(x + 30, GROUND - 12, x + 60, GROUND - 2);
+  g.lineTo(W * 2, GROUND + 60);
+  g.closePath();
+  g.fill();
+  g.fillStyle = "#6FAE47";
+  g.fillRect(-W, GROUND + 14, W * 3, 8);
+  // tierra
+  g.fillStyle = "#8B6A4A";
+  g.fillRect(-W, GROUND + 22, W * 3, 220);
+  g.fillStyle = "#A07E5A";
+  for (let x = -W; x < W * 2; x += 37) {
+    const y = GROUND + 40 + ((x * 7) % 60);
+    g.beginPath();
+    g.ellipse(x, y, 7, 4, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.fillStyle = "#6E5238";
+  for (let x = -W + 18; x < W * 2; x += 53) {
+    const y = GROUND + 70 + ((x * 13) % 50);
+    g.beginPath();
+    g.ellipse(x, y, 5, 3, 0, 0, Math.PI * 2);
+    g.fill();
+  }
 }
 
 /* ---------- sprites de Problemones renderizados desde los modelos 3D del juego 1 ---------- */
