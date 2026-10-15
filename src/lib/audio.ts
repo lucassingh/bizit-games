@@ -42,6 +42,8 @@ export const SFX = {
   "g.bell": "/audio/j1/impactBell_heavy_000.ogg",
   "g.zap": "/audio/j1/zap1.ogg",
   "g.laser": "/audio/j1/laser4.ogg",
+  // Deploy BGen
+  "j2.stretch": "/audio/j2/rubber-stretch.ogg",
 } as const;
 export type SfxName = keyof typeof SFX;
 
@@ -123,23 +125,52 @@ export function preloadAudio(names: readonly SfxName[] = Object.keys(SFX) as Sfx
   } catch {}
 }
 
-/** Efecto corto. `rate` cambia el tono (1 = original). */
-export function sfx(name: SfxName, opts: { volume?: number; rate?: number } = {}) {
-  if (typeof window === "undefined" || !useAudio.getState().enabled) return;
+export interface SfxHandle {
+  stop(fade?: number): void;
+  rate(r: number): void;
+}
+const NOOP: SfxHandle = { stop() {}, rate() {} };
+
+/** Efecto corto. `rate` cambia el tono (1 = original). Devuelve un control para frenarlo o cambiarle el tono. */
+export function sfx(name: SfxName, opts: { volume?: number; rate?: number } = {}): SfxHandle {
+  if (typeof window === "undefined" || !useAudio.getState().enabled) return NOOP;
   try {
     const c = context();
     const out = master();
+    let src: AudioBufferSourceNode | null = null;
+    let g: GainNode | null = null;
+    let stopped = false;
+    let wantRate = opts.rate ?? 1;
     void load(SFX[name]).then((buf) => {
-      if (!buf) return;
-      const src = c.createBufferSource();
+      if (!buf || stopped) return;
+      src = c.createBufferSource();
       src.buffer = buf;
-      src.playbackRate.value = opts.rate ?? 1;
-      const g = c.createGain();
+      src.playbackRate.value = wantRate;
+      g = c.createGain();
       g.gain.value = opts.volume ?? 0.8;
       src.connect(g).connect(out);
       src.start();
     });
-  } catch {}
+    return {
+      stop(fade = 0.05) {
+        stopped = true;
+        if (!src || !g) return;
+        const s = src;
+        g.gain.setTargetAtTime(0, c.currentTime, fade / 3);
+        window.setTimeout(() => {
+          try {
+            s.stop();
+          } catch {}
+        }, fade * 1000 + 30);
+      },
+      rate(r) {
+        wantRate = r;
+        if (src) src.playbackRate.setTargetAtTime(r, c.currentTime, 0.05);
+      },
+    };
+  } catch {
+    return NOOP;
+  }
 }
 
 /* ---------- música ---------- */
@@ -198,84 +229,37 @@ export const music = {
   },
 };
 
-/* ---------- goma de la gomera (sintetizada: estirar sube el tono, soltar chasquea) ---------- */
-let rub: { osc: OscillatorNode; osc2: OscillatorNode; lfo: OscillatorNode; lfoG: GainNode; g: GainNode; f: BiquadFilterNode } | null = null;
+/* ---------- goma de la gomera: grabación al estirar (sube un poco de tono), chasquido sintetizado al soltar ---------- */
+let stretchH: SfxHandle | null = null;
 export const rubber = {
   start() {
-    if (typeof window === "undefined" || !useAudio.getState().enabled) return;
-    try {
-      rubber.release(0);
-      const c = context();
-      const out = master();
-      const osc = c.createOscillator();
-      osc.type = "triangle";
-      const osc2 = c.createOscillator();
-      osc2.type = "sine";
-      osc2.detune.value = 7;
-      const lfo = c.createOscillator();
-      lfo.frequency.value = 22;
-      const lfoG = c.createGain();
-      lfoG.gain.value = 0.35;
-      const f = c.createBiquadFilter();
-      f.type = "lowpass";
-      f.frequency.value = 600;
-      f.Q.value = 2;
-      const g = c.createGain();
-      g.gain.value = 0;
-      lfo.connect(lfoG).connect(g.gain);
-      osc.connect(f);
-      osc2.connect(f);
-      f.connect(g).connect(out);
-      osc.start();
-      osc2.start();
-      lfo.start();
-      rub = { osc, osc2, lfo, lfoG, g, f };
-    } catch {}
+    rubber.release(0);
+    stretchH = sfx("j2.stretch", { volume: 0.7, rate: 0.95 });
   },
   /** k = 0..1 cuánto está estirada. */
   set(k: number) {
-    if (!rub || !ctx) return;
-    const now = ctx.currentTime;
-    const fr = 70 + k * 160;
-    rub.osc.frequency.setTargetAtTime(fr, now, 0.03);
-    rub.osc2.frequency.setTargetAtTime(fr * 2, now, 0.03);
-    rub.f.frequency.setTargetAtTime(350 + k * 700, now, 0.03);
-    rub.lfo.frequency.setTargetAtTime(10 + k * 14, now, 0.05);
-    rub.g.gain.setTargetAtTime(0.008 + k * 0.03, now, 0.04);
+    stretchH?.rate(0.95 + k * 0.25);
   },
   release(snap = 1) {
-    if (!rub || !ctx) return;
-    const r = rub;
-    rub = null;
-    const now = ctx.currentTime;
-    r.g.gain.cancelScheduledValues(now);
-    r.g.gain.setTargetAtTime(0, now, 0.02);
-    window.setTimeout(() => {
-      try {
-        r.osc.stop();
-        r.osc2.stop();
-        r.lfo.stop();
-      } catch {}
-    }, 150);
-    if (snap > 0) {
-      // chasquido: ráfaga de ruido filtrada
-      try {
-        const c = ctx;
-        const len = Math.floor(c.sampleRate * 0.12);
-        const buf = c.createBuffer(1, len, c.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
-        const src = c.createBufferSource();
-        src.buffer = buf;
-        const f = c.createBiquadFilter();
-        f.type = "bandpass";
-        f.frequency.value = 700 + snap * 600;
-        f.Q.value = 1.2;
-        const g = c.createGain();
-        g.gain.value = 0.5 + snap * 0.4;
-        src.connect(f).connect(g).connect(master());
-        src.start();
-      } catch {}
-    }
+    stretchH?.stop(0.08);
+    stretchH = null;
+    if (snap <= 0 || !ctx) return;
+    try {
+      const c = ctx;
+      const len = Math.floor(c.sampleRate * 0.12);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const f = c.createBiquadFilter();
+      f.type = "bandpass";
+      f.frequency.value = 700 + snap * 600;
+      f.Q.value = 1.2;
+      const g = c.createGain();
+      g.gain.value = 0.5 + snap * 0.4;
+      src.connect(f).connect(g).connect(master());
+      src.start();
+    } catch {}
   },
 };
