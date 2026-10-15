@@ -89,6 +89,10 @@ export default function RenderTool() {
           const m = o as { isMesh?: boolean; geometry?: { type: string }; visible: boolean };
           if (m.isMesh && m.geometry?.type === "TubeGeometry") m.visible = false;
         });
+        // los edificios de bajo detalle del anillo que quedan cerca de la cámara salen cortados: fuera
+        scene.traverse((o) => {
+          if (o.name.startsWith("comercial:low-detail") && o.position.z > 30) o.visible = false;
+        });
         // carteles de frente a la cámara, más grandes y despejados (Operaciones queda detrás del tanque de agua)
         for (const [id, dx, dz] of [
           ["ventas", 0, 0],

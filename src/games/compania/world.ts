@@ -206,6 +206,7 @@ export function buildWorld(scene: THREE.Scene) {
     const src = await loadModel(kit, name);
     const mat = z ? zoneMat(z, kit, src) : undefined;
     const g = instance(src, { mat, scale, x, z: zz, rotY, y });
+    g.name = `${kit}:${name}`;
     scene.add(g);
     return g;
   }
