@@ -33,8 +33,13 @@ const LAYERS: [number, string][] = [
   [15, "url(#tf-fill)"],
 ];
 
+/**
+ * Octógono con bisel a 45° desplazado `i` px hacia adentro de forma uniforme:
+ * los lados rectos se corren `i`, y para que la diagonal quede paralela y la
+ * banda tenga el mismo grosor, su intercepto se corre i·√2 (k = c − i·(2 − √2)).
+ */
 function octagon(w: number, h: number, i: number, cut: number) {
-  const k = Math.max(3, cut - i);
+  const k = Math.max(2, cut - i * (2 - Math.SQRT2));
   return [
     [i + k, i],
     [w - i - k, i],
