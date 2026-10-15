@@ -40,10 +40,10 @@ const G_STEP = 0.001 * (1000 / 60) ** 2; // aceleración por paso (gravedad de M
 
 const AGENTS: Record<Agent, { name: string; color: string; icon?: IconNode; ability: string }> = {
   bgen: { name: "BGen", color: COLORS.niebla, ability: "¡Apuntá bien!" },
-  cobranzas: { name: "Agente Cobranzas", color: COLORS.lima, icon: Coins, ability: "Tocá: se divide en 3" },
-  voz: { name: "Agente Voz", color: COLORS.cian, icon: Radio, ability: "Tocá: onda expansiva" },
-  integrador: { name: "Agente Integrador", color: "#5ED58A", icon: Cable, ability: "Tocá: se engancha y embiste" },
-  orquestador: { name: "BGen Orquestador", color: COLORS.lima, icon: Crown, ability: "Tocá: despliega a todo el equipo" },
+  cobranzas: { name: "Agente Cobranzas", color: COLORS.lima, icon: Coins, ability: "en el aire se divide en 3" },
+  voz: { name: "Agente Voz", color: COLORS.cian, icon: Radio, ability: "en el aire lanza una onda expansiva" },
+  integrador: { name: "Agente Integrador", color: "#5ED58A", icon: Cable, ability: "en el aire se engancha y embiste" },
+  orquestador: { name: "BGen Orquestador", color: COLORS.lima, icon: Crown, ability: "en el aire despliega a todo el equipo" },
 };
 
 const LEVEL_SHOTS: Agent[][] = [
@@ -189,7 +189,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     Composite.add(world, b);
     current = b;
     abilityUsed = false;
-    say(agent === "bgen" ? "concentrado" : "curioso", shotIndex === 0 && level > 0 ? `${AGENTS[agent].name}: ${AGENTS[agent].ability}` : undefined);
+    say(agent === "bgen" ? "concentrado" : "curioso", shotIndex === 0 && level > 0 ? `${AGENTS[agent].name}: tocá ${AGENTS[agent].ability}` : undefined);
   }
 
   /* ---------- daño por choques ---------- */

@@ -61,18 +61,22 @@ function CountUp({ to, start, duration = 1400 }: { to: number; start: boolean; d
   return <>{v.toLocaleString("es-AR")}</>;
 }
 
+const STAR = "M50 6 L62 36 L94 38 L69 59 L77 92 L50 74 L23 92 L31 59 L6 38 L38 36 Z";
+
 function Star({ on, show }: { on: boolean; show: boolean }) {
   return (
-    <span className={`${r.star} ${show ? r.starIn : ""} ${on ? r.starOn : ""}`}>
-      <svg viewBox="0 0 100 100" aria-hidden="true">
+    <span className={`${r.star} ${show ? r.starIn : ""}`}>
+      <svg viewBox="0 0 100 106" aria-hidden="true">
         <defs>
           <linearGradient id="star-g" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#FFC24A" />
+            <stop offset="0" stopColor="#FFD166" />
             <stop offset="1" stopColor="#F75D00" />
           </linearGradient>
         </defs>
-        <path d="M50 6 L62 36 L94 38 L69 59 L77 92 L50 74 L23 92 L31 59 L6 38 L38 36 Z" fill={on ? "url(#star-g)" : "#E9E4DE"} stroke={on ? "#b84400" : "#d5cec6"} strokeWidth="5" strokeLinejoin="round" />
-        {on && <path d="M38 34 L46 20" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".8" />}
+        {/* sombra dura, como los botones y placas del kit */}
+        <path d={STAR} transform="translate(0 7)" fill={on ? "#B33F00" : "#D9D2CA"} />
+        <path d={STAR} fill={on ? "url(#star-g)" : "#ECE7E1"} />
+        {on && <circle cx="40" cy="36" r="5" fill="#fff" opacity=".85" />}
       </svg>
       {on && show && <i className={r.burst} aria-hidden="true" />}
     </span>

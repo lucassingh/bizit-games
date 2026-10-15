@@ -51,21 +51,17 @@ function TimeRing({ timeLeft, duration, size }: { timeLeft: number; duration: nu
   const secs = Math.max(0, Math.ceil(timeLeft));
   const frac = Math.max(0, Math.min(1, timeLeft / duration));
   const low = secs <= 10;
-  const R = 26;
+  const R = 29;
   const C = 2 * Math.PI * R;
+  const onlySecs = secs < 60;
   return (
-    <div className={`${h.ring} ${low ? h.ringLow : ""}`} style={{ width: size, height: size }}>
+    <div className={`${h.ring} ${low ? h.ringLow : ""} ${onlySecs ? h.ringSecs : ""}`} style={{ width: size, height: size }}>
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <circle cx="32" cy="32" r={R} className={h.ringTrack} />
         <circle cx="32" cy="32" r={R} className={h.ringFill} strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />
-        {Array.from({ length: 12 }, (_, i) => (
-          <line key={i} x1="32" y1="3" x2="32" y2={i % 3 === 0 ? 7 : 5} className={h.ringTick} transform={`rotate(${i * 30} 32 32)`} />
-        ))}
       </svg>
-      <span className={h.ringTime}>
-        {secs >= 60 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}` : secs}
-      </span>
-      <span className={h.ringUnit}>{secs >= 60 ? "min" : "seg"}</span>
+      <span className={h.ringTime}>{onlySecs ? secs : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`}</span>
+      <span className={h.ringUnit}>{onlySecs ? "seg" : "min"}</span>
     </div>
   );
 }
@@ -123,7 +119,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
   const timeBlock = (
     <div className={`${h.plaque} ${h.timePlaque}`}>
       <span className={h.label}>Tiempo</span>
-      <TimeRing timeLeft={timeLeft} duration={duration} size={tv ? 104 : 72} />
+      <TimeRing timeLeft={timeLeft} duration={duration} size={tv ? 112 : 78} />
     </div>
   );
 

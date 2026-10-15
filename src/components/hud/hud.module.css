@@ -185,8 +185,11 @@
 
 .ring {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: calc(2 * var(--u));
 }
 
 .ring svg {
@@ -195,48 +198,57 @@
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  overflow: visible;
 }
 
 .ringTrack {
   fill: #fff;
-  stroke: #e3dcd4;
-  stroke-width: 5;
+  stroke: #e6e0d9;
+  stroke-width: 6;
 }
 
 .ringFill {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 5;
-  stroke-linecap: butt;
+  stroke-width: 6;
+  stroke-linecap: round;
   transition: stroke-dashoffset 0.25s linear, stroke 0.3s;
-}
-
-.ringTick {
-  stroke: #c9c0b6;
-  stroke-width: 1.4;
 }
 
 .ringTime {
   position: relative;
   font-family: var(--display);
-  font-size: calc(26 * var(--u));
+  font-size: calc(21 * var(--u));
   line-height: 1;
+  letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-  margin-top: calc(6 * var(--u));
 }
 
-.bottom .ringTime {
-  font-size: calc(20 * var(--u));
-  margin-top: calc(4 * var(--u));
+.ringSecs .ringTime {
+  font-size: calc(30 * var(--u));
 }
 
 .ringUnit {
   position: relative;
-  font: 800 calc(8 * var(--u)) var(--body);
+  margin-top: calc(3 * var(--u));
+  font: 800 calc(7.5 * var(--u)) var(--body);
   letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.bottom .ringTime {
+  font-size: calc(15 * var(--u));
+}
+
+.bottom .ringSecs .ringTime {
+  font-size: calc(22 * var(--u));
+}
+
+.bottom .ringUnit {
+  font-size: calc(6.5 * var(--u));
+  margin-top: calc(1 * var(--u));
 }
 
 .ringLow .ringFill {
@@ -480,6 +492,7 @@
 
 .say {
   margin: 0;
+  text-wrap: balance;
   font-size: calc(12.5 * var(--u));
   line-height: 1.3;
   padding: calc(8 * var(--u)) calc(12 * var(--u));
