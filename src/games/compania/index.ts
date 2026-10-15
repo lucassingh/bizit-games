@@ -837,7 +837,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (running) hooks.metric(`${Math.round(pct * 100)}%`, pct);
 
     if (clock.done && !ended) {
-      // cierre: BGen festeja frente a la Casa Central encendida, mensaje y recién después el resultado
+      // cierre (12 s): BGen festeja frente a la Casa Central encendida, mensaje legible y recién después el resultado
       ended = true;
       outroT = 0;
       expr = "logro";
@@ -849,7 +849,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       window.setTimeout(() => {
         hooks.stage(null);
         hooks.end({ score: scorer.score, metricValue: `${pct}%`, metricPct: final });
-      }, 7000);
+      }, 12000);
     }
     if (ended && !paused) outroT += dt;
 
