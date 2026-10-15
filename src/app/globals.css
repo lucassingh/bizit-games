@@ -507,30 +507,30 @@ p {
   animation: pop-in 0.4s ease both;
 }
 
-/* piquito: triángulo naranja (::before) con un triángulo blanco encima (::after)
-   que tapa el borde inferior del globo; sin rotaciones ni clip-path. */
+/* piquito: dos cajas recortadas en triángulo (naranja atrás, blanca adelante) que
+   nacen en el borde interior del globo y lo tapan. Sin bordes CSS: los anchos de
+   borde se redondean a píxeles enteros según la escala de pantalla y dejaban
+   ver una línea; width/height + clip-path no tienen ese problema. */
 .bubble::before,
 .bubble::after {
   content: "";
   position: absolute;
   left: 50%;
+  top: calc(100% - 0.5px);
   transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-color: transparent;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
 .bubble::before {
-  bottom: calc(-12 * var(--u));
-  border-width: calc(12 * var(--u)) calc(12 * var(--u)) 0;
-  border-top-color: var(--orange);
+  width: calc(26 * var(--u));
+  height: calc(13 * var(--u));
+  background: var(--orange);
 }
 
 .bubble::after {
-  bottom: calc(-8.5 * var(--u));
-  border-width: calc(8.5 * var(--u)) calc(8.5 * var(--u)) 0;
-  border-top-color: #fff;
+  width: calc(19 * var(--u));
+  height: calc(9.5 * var(--u));
+  background: #fff;
 }
 
 .bubble-left::before,
