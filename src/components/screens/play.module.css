@@ -32,8 +32,7 @@
 
 /* el canvas vive adentro del marco: mismo bisel (30u) menos el margen del marco */
 .host {
-  /* bisel exterior 28u menos el margen del marco (17.5u) */
-  --cut: calc(11 * var(--u));
+  /* --inset y --cut los calcula Play.tsx con la misma geometría que TechFrame */
   position: absolute;
   inset: var(--inset, calc(18 * var(--u)));
   z-index: 1;

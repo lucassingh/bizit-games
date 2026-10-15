@@ -26,6 +26,14 @@ export function frameInset(scale = 1) {
   return BAND_TOTAL * scale + 2;
 }
 
+/**
+ * Bisel que debe usar un contenido recortado (p. ej. el canvas) ubicado a `frameInset`
+ * del borde, para que su diagonal quede paralela a la del marco y adentro de la línea negra.
+ */
+export function innerCut(cut: number, scale = 1) {
+  return Math.max(2, cut - frameInset(scale) * (2 - Math.SQRT2));
+}
+
 type Props = {
   /** Tamaño del bisel exterior, en unidades. */
   cut?: number;

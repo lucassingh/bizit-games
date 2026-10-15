@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
-import TechFrame, { frameInset } from "../TechFrame";
+import TechFrame, { frameInset, innerCut } from "../TechFrame";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -21,6 +21,8 @@ async function loadGame(id: GameId): Promise<CreateGame> {
 }
 
 /** Pantalla de juego: escenario + HUD (lateral en TV, inferior en tablet). */
+const STAGE_CUT = 28;
+
 export default function Play({ config, layout }: { config: KioskConfig; layout: "tv" | "tablet" }) {
   const game = useSession((st) => st.game)!;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -102,8 +104,8 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
     <section className={`${p.play} ${layout === "tv" ? p.tv : p.tablet}`} style={accentVars(game) as React.CSSProperties}>
       <div className={p.stageWrap}>
       <div className={p.stage}>
-        <TechFrame cut={28} notch={0.3} />
-        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset(1)} * var(--u))` } as React.CSSProperties} />
+        <TechFrame cut={STAGE_CUT} notch={0.3} />
+        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
         {count !== null && !loading && (
