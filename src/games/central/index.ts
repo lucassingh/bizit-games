@@ -171,8 +171,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const kinds = PHASE_KINDS[p];
     const k = kind ?? kinds[Math.floor(rand() * kinds.length)];
     const power = k === "team" || k === "orq";
-    const fromWin = rand() < 0.7;
-    const win = WINS[Math.floor(rand() * WINS.length)];
+    // solo desde los pisos altos (al menos 330 px de caída: da tiempo a cruzar la vereda)
+    const high = WINS.filter((w) => w.y < FLOOR - 330);
+    const fromWin = rand() < 0.7 && high.length > 0;
+    const win = high[Math.floor(rand() * high.length)] ?? WINS[0];
     drops.push({
       kind: k,
       x: fromWin ? win.x + (rand() - 0.5) * win.w * 0.8 : 170 + rand() * (W - 340),
