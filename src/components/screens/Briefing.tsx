@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import BGen from "../BGen";
+import FoeCards from "../FoeCards";
 import GestureIcon from "../GestureIcon";
 import Header, { Steps } from "../Header";
 import { accentVars, GAMES, PHASES } from "@/lib/games";
@@ -45,6 +46,7 @@ export default function Briefing({ layout, durationSec }: { layout: "tv" | "tabl
               Acompañá a BGen a <em>{g.mission}</em>
             </h1>
             <p className={s.howTo}>{g.howTo}</p>
+            <FoeCards game={game} />
             <div className={s.phases}>
               {g.steps.map((step, i) => (
                 <div key={step} className={s.phaseCard} style={{ animationDelay: `${0.1 + i * 0.12}s` }}>

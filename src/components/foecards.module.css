@@ -1,0 +1,164 @@
+/* Cartas de enemigos del briefing: estilo "carta de videojuego" con la paleta Bizit. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--u));
+  margin: calc(14 * var(--u)) 0 calc(6 * var(--u));
+}
+
+.title {
+  font: 800 calc(11 * var(--u)) var(--body);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr));
+  gap: calc(8 * var(--u));
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: calc(3 * var(--u));
+  padding: calc(8 * var(--u)) calc(6 * var(--u)) calc(9 * var(--u));
+  border-radius: calc(14 * var(--u));
+  background: linear-gradient(180deg, #fff, #f6f1ea);
+  border: calc(2 * var(--u)) solid var(--line);
+  box-shadow: 0 calc(4 * var(--u)) 0 #e3dcd4;
+  animation: foe-in 0.45s both;
+  min-width: 0;
+}
+
+/* esquina superior cortada, como las cartas del HUD */
+.card::before {
+  content: "";
+  position: absolute;
+  top: calc(-2 * var(--u));
+  right: calc(-2 * var(--u));
+  width: calc(14 * var(--u));
+  height: calc(14 * var(--u));
+  background: var(--page);
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
+}
+
+.chip {
+  align-self: flex-start;
+  font: 800 calc(8.5 * var(--u)) var(--body);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: calc(2 * var(--u)) calc(6 * var(--u));
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+}
+
+.art {
+  width: 100%;
+  height: calc(58 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.art img {
+  display: block;
+  width: 88%;
+  height: calc(58 * var(--u));
+  object-fit: contain;
+  filter: drop-shadow(0 calc(3 * var(--u)) 0 rgba(33, 37, 41, 0.12));
+}
+
+.art svg {
+  width: calc(40 * var(--u));
+  height: calc(40 * var(--u));
+  stroke-width: 2.2;
+}
+
+.name {
+  font-family: var(--heading);
+  font-weight: 900;
+  font-size: calc(11.5 * var(--u));
+  line-height: 1.1;
+  letter-spacing: -0.2px;
+}
+
+.blurb {
+  font-size: calc(9.5 * var(--u));
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+/* variantes */
+.vip .chip {
+  background: #d9a441;
+  color: var(--ink);
+}
+.vip .art svg {
+  color: #d9a441;
+  fill: rgba(217, 164, 65, 0.18);
+}
+.trampa .chip {
+  background: var(--red);
+}
+.trampa .art svg {
+  color: var(--red);
+}
+.jefe {
+  background: linear-gradient(180deg, #2a2d3a, var(--noche));
+  border-color: var(--noche);
+  box-shadow: 0 calc(4 * var(--u)) 0 #000;
+  color: #fff;
+}
+.jefe .chip {
+  background: var(--red);
+}
+.jefe .art svg {
+  color: #fff;
+}
+.jefe .blurb {
+  color: #b8bcc8;
+}
+
+@keyframes foe-in {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(10 * var(--u))) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* pantallas bajas (tablet apaisada): cartas más compactas, sin la línea de detalle */
+@media (max-height: 840px) {
+  .wrap {
+    margin: calc(8 * var(--u)) 0 calc(2 * var(--u));
+  }
+  .art,
+  .art img {
+    height: calc(42 * var(--u));
+  }
+  .blurb {
+    display: none;
+  }
+  .card {
+    padding: calc(6 * var(--u)) calc(5 * var(--u)) calc(7 * var(--u));
+  }
+}

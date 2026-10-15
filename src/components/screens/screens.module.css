@@ -514,7 +514,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: calc(12 * var(--u));
-  margin: calc(18 * var(--u)) 0;
+  margin: calc(12 * var(--u)) 0 calc(12 * var(--u));
 }
 
 .phaseCard {
@@ -550,7 +550,7 @@
   display: flex;
   gap: calc(12 * var(--u));
   flex-wrap: wrap;
-  margin-bottom: calc(22 * var(--u));
+  margin-bottom: calc(16 * var(--u));
 }
 
 .control {
@@ -762,5 +762,31 @@
   }
   .mission {
     font-size: calc(36 * var(--u));
+  }
+}
+
+/* tablet apaisada (≈800 px de alto): el briefing entero tiene que entrar sin scroll */
+@media (max-height: 840px) {
+  .mission {
+    font-size: calc(36 * var(--u));
+    margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
+  }
+  .howTo {
+    font-size: calc(14 * var(--u));
+  }
+  .phases {
+    margin: calc(8 * var(--u)) 0;
+  }
+  .phaseCard {
+    padding: calc(10 * var(--u)) calc(12 * var(--u));
+    gap: calc(5 * var(--u));
+  }
+  .controlsRow {
+    gap: calc(8 * var(--u));
+    margin-bottom: calc(10 * var(--u));
+  }
+  .control {
+    padding: calc(5 * var(--u)) calc(14 * var(--u)) calc(5 * var(--u)) calc(8 * var(--u));
+    font-size: calc(13.5 * var(--u));
   }
 }
