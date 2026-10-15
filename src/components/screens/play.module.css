@@ -32,11 +32,12 @@
 
 /* el canvas vive adentro del marco: mismo bisel (30u) menos el margen del marco */
 .host {
-  /* --inset y --cut los calcula Play.tsx con la misma geometría que TechFrame */
+  /* --inset y --r los calcula Play.tsx con la misma geometría que TechFrame */
   position: absolute;
-  inset: var(--inset, calc(18 * var(--u)));
+  inset: var(--inset, calc(12 * var(--u)));
   z-index: 1;
-  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  border-radius: var(--r, calc(6 * var(--u)));
+  overflow: hidden;
 }
 
 .host canvas {

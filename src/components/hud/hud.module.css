@@ -15,13 +15,24 @@
   display: flex;
   flex-direction: column;
   gap: calc(10 * var(--u));
-  padding: calc(36 * var(--u)) calc(28 * var(--u)) calc(30 * var(--u));
+  padding: calc(22 * var(--u)) calc(24 * var(--u)) calc(24 * var(--u));
   min-height: 0;
   overflow: hidden;
 }
 
 .sidebar > * {
   flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--display);
+  font-size: calc(13 * var(--u));
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: calc(6 * var(--u));
+  border-bottom: calc(2 * var(--u)) solid var(--accent);
+  margin-bottom: calc(2 * var(--u));
 }
 
 .bottom {
@@ -31,7 +42,7 @@
   grid-template-columns: auto minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
   align-items: stretch;
   gap: calc(12 * var(--u));
-  padding: calc(34 * var(--u)) calc(36 * var(--u)) calc(24 * var(--u));
+  padding: calc(24 * var(--u)) calc(30 * var(--u)) calc(22 * var(--u));
 }
 
 .row2 {
@@ -556,7 +567,7 @@
 .sidebar .bgen {
   align-items: flex-start;
   min-height: calc(84 * var(--u));
-  margin-top: calc(4 * var(--u));
+  margin-top: calc(2 * var(--u));
 }
 
 .say {

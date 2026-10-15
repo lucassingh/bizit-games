@@ -349,7 +349,7 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
     ctx.strokeStyle = col;
     ctx.lineWidth = w;
     ctx.beginPath();
-    ctx.moveTo(sx, ground - 4);
+    ctx.moveTo(sx, ground - 70);
     ctx.lineTo(sx, sy + 62);
     ctx.quadraticCurveTo(sx - 6, sy + 20, sx - 36, sy - 14);
     ctx.moveTo(sx, sy + 62);
@@ -357,13 +357,31 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
     ctx.stroke();
   };
   if (part === "back") {
+    // base: poste de madera clara como el del cartel, con una lengüeta de tierra
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.beginPath();
+    ctx.ellipse(sx, ground - 2, 30, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#B4783F";
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.5;
+    rr(ctx, sx - 13, ground - 70, 26, 70, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(sx + 3, ground - 68, 8, 66);
+    // aro de metal donde arranca la horquilla
+    ctx.fillStyle = "#6B6E75";
+    rr(ctx, sx - 15, ground - 74, 30, 9, 3);
+    ctx.fill();
+    ctx.stroke();
     wood(26, INK);
     wood(19, "#8C5A2B");
     // veta
     ctx.strokeStyle = "rgba(255,255,255,0.22)";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(sx - 4, ground - 10);
+    ctx.moveTo(sx - 4, ground - 76);
     ctx.lineTo(sx - 4, sy + 70);
     ctx.stroke();
     // cartel de madera "DEPLOY" clavado a un poste, al pie de la gomera
