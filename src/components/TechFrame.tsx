@@ -11,13 +11,13 @@ import s from "./techframe.module.css";
  *
  * El contenido debe dejar un margen de `INSET` unidades (var(--u)) respecto del borde.
  */
-/** Bandas de afuera hacia adentro (ancho en unidades a escala 1, color). Proporciones de la referencia: 20/20/20/10/10. */
+/** Bandas de afuera hacia adentro (ancho en unidades a escala 1, color). Proporciones de la referencia (20/20/20/10/10) a la mitad de grosor; iguales en escenario y HUD. */
 const BANDS: [number, string][] = [
-  [8, "#d8d0c7"],
-  [8, "#ffffff"],
-  [8, "#c4bab0"],
+  [4, "#d8d0c7"],
   [4, "#ffffff"],
-  [2, "#212529"],
+  [4, "#c4bab0"],
+  [2, "#ffffff"],
+  [1.5, "#212529"],
 ];
 const BAND_TOTAL = BANDS.reduce((a, [w]) => a + w, 0);
 

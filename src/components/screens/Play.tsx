@@ -102,7 +102,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
     <section className={`${p.play} ${layout === "tv" ? p.tv : p.tablet}`} style={accentVars(game) as React.CSSProperties}>
       <div className={p.stageWrap}>
       <div className={p.stage}>
-        <TechFrame cut={34} notch={0.3} />
+        <TechFrame cut={28} notch={0.3} />
         <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset(1)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
