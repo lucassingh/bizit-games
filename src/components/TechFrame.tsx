@@ -5,7 +5,7 @@ import s from "./techframe.module.css";
 
 /**
  * Marco de las pantallas de juego, a partir del `box.svg` del Dev (assets-raw):
- * contorno naranja fino, banda blanca, contorno interior fino y dos pestañas
+ * banda blanca (sin contorno exterior), contorno interior fino y dos pestañas
  * naranjas en paralelogramo (arriba a la izquierda, abajo a la derecha).
  * Las proporciones del SVG original (viewBox 503×300) se conservan en unidades
  * de UI (var(--u)): banda 10, radio exterior 10.4, radio interior 5.8, pestañas
@@ -57,15 +57,16 @@ export default function TechFrame({ fill = "#ffffff", tab = 0.5 }: Props) {
   const slant = 1.36 * b;
   const len = Math.max(slant * 3, Math.min(w * tab, 520 * u));
   const topX = Math.min(w * 0.082, 60 * u); // en el original arranca en 41/503 del ancho
-  const botX = w - len - Math.min(w * 0.088, 64 * u); // y termina a 45/503 del borde derecho
+  // la pestaña inferior termina más adentro del borde derecho (pedido del Dev)
+  const botX = w - len - Math.min(w * 0.19, 140 * u);
   const inset = sw / 2;
 
   return (
     <div ref={ref} className={s.wrap} aria-hidden="true">
       {w > 0 && (
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={s.svg}>
-          {/* banda blanca con contorno exterior */}
-          <rect x={inset} y={inset} width={w - sw} height={h - sw} rx={ro} fill="#ffffff" stroke={ORANGE} strokeWidth={sw} />
+          {/* banda blanca sin contorno exterior (más limpio / futurista) */}
+          <rect x={inset} y={inset} width={w - sw} height={h - sw} rx={ro} fill="#ffffff" />
           {/* pestañas (dentro de la banda) */}
           <polygon points={`${topX + slant},${inset} ${topX},${inset + b} ${topX + len},${inset + b} ${topX + len + slant},${inset}`} fill={ORANGE} />
           <polygon points={`${botX},${h - inset} ${botX + slant},${h - inset - b} ${botX + len + slant},${h - inset - b} ${botX + len},${h - inset}`} fill={ORANGE} />
