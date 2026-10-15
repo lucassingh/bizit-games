@@ -98,7 +98,7 @@ export default function RenderTool() {
           ["ventas", 0, 0],
           ["operaciones", 14, 10],
           ["finanzas", 0, 24],
-          ["hq", 6, 2],
+          ["hq", -34, 8],
         ] as const) {
           const g = scene.getObjectByName(`sign:${id}`);
           if (!g) continue;

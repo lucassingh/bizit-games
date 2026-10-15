@@ -68,11 +68,13 @@ export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number
     const horizon = GROUND - 14;
     const iw = W * 1.12, ih = iw * (CITY_IMG.naturalHeight / CITY_IMG.naturalWidth);
     g.drawImage(CITY_IMG, (W - iw) / 2, horizon - ih * 0.86, iw, ih);
-    const haze = g.createLinearGradient(0, horizon - ih, 0, horizon);
-    haze.addColorStop(0, "rgba(226,238,247,0.6)");
+    // velo que nace transparente bien arriba (sin borde visible) y se cierra sobre la ciudad
+    const haze = g.createLinearGradient(0, horizon - ih * 1.6, 0, horizon);
+    haze.addColorStop(0, "rgba(226,238,247,0)");
+    haze.addColorStop(0.45, "rgba(226,238,247,0.5)");
     haze.addColorStop(1, "rgba(240,236,230,0.66)");
     g.fillStyle = haze;
-    g.fillRect(-W, horizon - ih - 10, W * 3, ih + 10);
+    g.fillRect(-W, -H, W * 3, horizon + H);
     drawGround(g, W, GROUND);
     return;
   }

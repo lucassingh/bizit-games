@@ -220,7 +220,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       ] as const) {
         const m = meta(self);
         if (!m || m.dead) continue;
-        let dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? 0.8 : 1);
+        let dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? (m.enemy ? 1.6 : 0.8) : 1);
         if (m.kind === "boss" && m.shield) {
           if (minis.includes(other) || (other.plugin as { agent?: Agent }).agent === "orquestador") {
             m.shield = false;
@@ -251,6 +251,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     m.dead = true;
     Composite.remove(world, b);
     const { x, y } = b.position;
+    // lo que estaba apoyado o cerca se despierta: si le sacaron el piso, cae
+    for (const o of Composite.allBodies(world)) {
+      if (o.isStatic || !o.isSleeping) continue;
+      const dx = o.position.x - x, dy = o.position.y - y;
+      if (Math.abs(dx) < 260 && Math.abs(dy) < 260) Sleeping.set(o, false);
+    }
     if (m.enemy) {
       killed++;
       sfx(m.kind === "boss" ? "g.beam" : "g.bell", { volume: m.kind === "boss" ? 1 : 0.6, rate: m.kind === "boss" ? 1 : 1.3 + Math.random() * 0.3 });
