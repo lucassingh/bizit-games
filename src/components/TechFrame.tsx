@@ -5,7 +5,7 @@ import s from "./techframe.module.css";
 
 /**
  * Marco "pantalla sci-fi" (adaptado de la referencia del Dev a la paleta clara de Bizit):
- * capas de borde biselado que alternan claro/oscuro, pestaña superior con línea IA
+ * capas de borde biselado que alternan claro/oscuro, pestaña superior con la línea naranja→rojo de Bizit
  * y pestaña inferior. Se dibuja en SVG al tamaño exacto del contenedor, así los
  * biseles quedan nítidos en cualquier escala (incluida la de Windows al 125 %).
  *
@@ -84,8 +84,9 @@ export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true }
               <stop offset="1" stopColor="#f5f1ec" />
             </radialGradient>
             <linearGradient id="tf-ia" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#0ab6bc" />
-              <stop offset="1" stopColor="#b2f326" />
+              <stop offset="0" stopColor="#FE8100" />
+              <stop offset="0.55" stopColor="#F75D00" />
+              <stop offset="1" stopColor="#E80000" />
             </linearGradient>
           </defs>
           {LAYERS.map(([i, fill]) => (
