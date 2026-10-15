@@ -6,6 +6,7 @@ import { bindGestures, PhaseClock, Popups, rng, Scorer } from "../shared/engine"
 import { faceShapes, makeBlinker } from "../shared/bgenFace";
 import { COLORS, DECAGON_PATH, MARK_POLYS, BGEN_FACE } from "@/lib/brand";
 import { buildWorld, type ZoneId } from "./world";
+import { makeProblemon, type Kind, type Problemon } from "./problemones";
 
 /**
  * Juego 1 · La Compañía — runner 3D (docs/03).
@@ -13,7 +14,7 @@ import { buildWorld, type ZoneId } from "./world";
  * y salta (tap). Cada tramo integra un área; el final descarga el rayo sobre el Caos.
  */
 
-type Kind = "conector" | "mail" | "fantasma" | "excel" | "caja" | "factura" | "botella" | "auto" | "orq";
+
 
 interface Item {
   s: number;
@@ -26,6 +27,7 @@ interface Item {
   sec: number;
   baseY: number;
   phase: number;
+  tick?: Problemon["tick"];
 }
 
 const LANE_W = 3.2;
@@ -264,129 +266,16 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   }
   void DECAGON_PATH;
 
-  /* ---------- Problemones, conectores y power-ups ---------- */
+  /* ---------- Problemones, conectores y power-ups (ver problemones.ts) ---------- */
   const rand = rng(20261120);
-  const M = {
-    eyeW: new THREE.MeshBasicMaterial({ color: "#ffffff" }),
-    eyeB: new THREE.MeshBasicMaterial({ color: COLORS.carbon }),
-    mail: new THREE.MeshStandardMaterial({ color: "#E7DCC6", roughness: 0.9, flatShading: true }),
-    ghost: new THREE.MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.6, transparent: true, opacity: 0.88 }),
-    excel: new THREE.MeshStandardMaterial({ color: "#5E9F6A", roughness: 0.8, flatShading: true }),
-    caja: new THREE.MeshStandardMaterial({ color: "#C9A77A", roughness: 0.9, flatShading: true }),
-    factura: new THREE.MeshStandardMaterial({ color: "#F0D979", roughness: 0.9, side: THREE.DoubleSide }),
-    botella: new THREE.MeshStandardMaterial({ color: "#7FB59A", roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85 }),
-    con: new THREE.MeshBasicMaterial({ color: COLORS.cian, toneMapped: false }),
-    conCore: new THREE.MeshBasicMaterial({ color: COLORS.lima, toneMapped: false }),
-    auto: new THREE.MeshBasicMaterial({ color: COLORS.lima, toneMapped: false }),
-    orq: new THREE.MeshStandardMaterial({ color: COLORS.naranja, emissive: "#7a2a00", roughness: 0.3 }),
-  };
-  const G = {
-    eye: new THREE.SphereGeometry(0.22, 10, 8),
-    pupil: new THREE.SphereGeometry(0.12, 8, 6),
-    torus: new THREE.TorusGeometry(0.55, 0.16, 8, 20),
-    core: new THREE.SphereGeometry(0.22, 10, 8),
-  };
-  function eyes(parent: THREE.Object3D, y: number, z: number, spread = 0.35) {
-    for (const sx of [-1, 1]) {
-      const e = new THREE.Mesh(G.eye, M.eyeW);
-      e.position.set(sx * spread, y, z);
-      const p = new THREE.Mesh(G.pupil, M.eyeB);
-      p.position.set(sx * spread, y - 0.03, z + 0.15);
-      parent.add(e, p);
-    }
-  }
-  function makeObj(kind: Kind): { obj: THREE.Object3D; low: boolean; y: number } {
-    const g = new THREE.Group();
-    let low = false, y = 0.5;
-    const add = (m: THREE.Mesh) => {
-      m.castShadow = true;
-      g.add(m);
-      return m;
-    };
-    switch (kind) {
-      case "conector": {
-        add(new THREE.Mesh(G.torus, M.con));
-        g.add(new THREE.Mesh(G.core, M.conCore));
-        y = 1.4;
-        break;
-      }
-      case "mail": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.5), M.mail)).position.y = 0.7;
-        const flap = add(new THREE.Mesh(new THREE.ConeGeometry(1.1, 0.6, 4), M.mail));
-        flap.rotation.set(Math.PI, Math.PI / 4, 0);
-        flap.position.set(0, 1.1, 0.26);
-        flap.scale.set(1, 1, 0.1);
-        eyes(g, 0.65, 0.3);
-        low = true;
-        y = 0;
-        break;
-      }
-      case "caja": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.6), M.caja)).position.y = 0.7;
-        eyes(g, 0.8, 0.85);
-        low = true;
-        y = 0;
-        break;
-      }
-      case "fantasma": {
-        add(new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 12), M.ghost)).position.y = 0.4;
-        const tail = add(new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.4, 12, 1, true), M.ghost));
-        tail.rotation.x = Math.PI;
-        tail.position.y = -0.5;
-        eyes(g, 0.55, 0.95, 0.38);
-        y = 1.7;
-        break;
-      }
-      case "excel": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(2, 2.4, 1.4), M.excel)).position.y = 1.2;
-        const grid = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2.4, 1.4, 3, 4, 1)), new THREE.LineBasicMaterial({ color: "#2f5b37" }));
-        grid.position.y = 1.2;
-        g.add(grid);
-        eyes(g, 1.6, 0.75);
-        y = 0;
-        break;
-      }
-      case "factura": {
-        add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.3, 0.12), M.factura)).position.y = 1.15;
-        const clock = new THREE.Mesh(new THREE.CircleGeometry(0.45, 20), new THREE.MeshBasicMaterial({ color: COLORS.rojo }));
-        clock.position.set(0, 0.7, 0.08);
-        g.add(clock);
-        eyes(g, 1.6, 0.1);
-        y = 0;
-        break;
-      }
-      case "botella": {
-        const b = add(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, LANE_W * 2 + 0.6, 18), M.botella));
-        b.rotation.z = Math.PI / 2;
-        b.position.y = 1.3;
-        const neck = add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 1.6, 12), M.botella));
-        neck.rotation.z = Math.PI / 2;
-        neck.position.set(LANE_W + 1, 1.3, 0);
-        eyes(g, 1.7, 1.25, 0.5);
-        y = 0;
-        break;
-      }
-      case "auto": {
-        add(new THREE.Mesh(new THREE.OctahedronGeometry(0.9, 0), M.auto));
-        y = 1.6;
-        break;
-      }
-      case "orq": {
-        add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), M.orq));
-        y = 1.6;
-        break;
-      }
-    }
-    return { obj: g, low, y };
-  }
 
   const items: Item[] = [];
   const conTotal = [0, 0, 0];
   const conGot = [0, 0, 0];
   const hits = [0, 0, 0];
   function place(it: Omit<Item, "obj" | "low" | "baseY" | "done" | "phase">) {
-    const { obj, low, y } = makeObj(it.kind);
-    if (it.kind !== "conector" && it.kind !== "botella" && it.kind !== "fantasma") obj.scale.setScalar(1.3);
+    const { obj, low, y, tick } = makeProblemon(it.kind);
+    if (it.kind !== "conector" && it.kind !== "botella" && it.kind !== "fantasma" && it.kind !== "auto" && it.kind !== "orq") obj.scale.setScalar(1.25);
     const p = curve.getPointAt(Math.min(0.999, it.s / L));
     const tg = curve.getTangentAt(Math.min(0.999, it.s / L));
     const r = new THREE.Vector3(-tg.z, 0, tg.x).normalize();
@@ -395,13 +284,19 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     obj.lookAt(obj.position.clone().sub(tg));
     obj.visible = false;
     scene.add(obj);
-    items.push({ ...it, obj, low, baseY: y, done: false, phase: rand() * 6 });
+    items.push({ ...it, obj, low, baseY: y, done: false, phase: rand() * 6, tick });
     if (it.kind === "conector") conTotal[it.sec]++;
   }
   // ni en los límites de tramo ni en las esquinas (ahí los carriles se cierran y el esquive se vuelve injusto)
   const corners = W.slice(1, -1).map(([x, z]) => distTo(x, z));
+  const LINEUP = typeof location !== "undefined" && new URLSearchParams(location.search).has("lineup");
   const near = (s: number) => SB.some((b) => Math.abs(s - b) < 9) || corners.some((c) => Math.abs(s - c) < 13);
-  for (let sec = 0; sec < 3; sec++) {
+  if (LINEUP) {
+    const kinds: Kind[] = ["mail", "fantasma", "excel", "caja", "factura", "botella", "conector", "auto", "orq"];
+    // una fila ancha frente a la cámara (los carriles fraccionarios solo sirven para la foto)
+    kinds.forEach((kind, i) => place({ s: 16, lane: 0, lanes: [(i - 4) * 1.15], kind, sec: 0 }));
+  }
+  for (let sec = 0; sec < 3 && !LINEUP; sec++) {
     let s = SB[sec] + (sec === 0 ? 22 : 12);
     const end = SB[sec + 1] - 8;
     const obstacles: Kind[] = sec === 0 ? ["fantasma", "mail"] : sec === 1 ? ["excel", "caja"] : ["factura", "botella", "excel"];
@@ -769,8 +664,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const inView = ds < 75 && ds > -8 && !(it.done && (it.kind === "conector" || it.kind === "auto" || it.kind === "orq" || ds < -6));
       if (it.obj.visible !== inView && !(it.done && it.obj.visible === false)) it.obj.visible = inView;
       if (!inView) continue;
-      if (it.kind === "conector" || it.kind === "auto" || it.kind === "orq") it.obj.rotation.y += dt * 3;
+      if (it.kind === "conector" || it.kind === "auto" || it.kind === "orq") {
+        it.obj.rotation.y += dt * 3;
+        it.obj.position.y = it.baseY + Math.sin(now / 350 + it.phase) * 0.18;
+      }
       if (it.kind === "fantasma") it.obj.position.y = it.baseY + Math.sin(now / 400 + it.phase) * 0.35;
+      if (it.kind === "mail" || it.kind === "caja" || it.kind === "excel") it.obj.rotation.z = Math.sin(now / 500 + it.phase) * 0.04;
+      it.tick?.(now, it.phase);
       if (it.kind === "factura") {
         const fall = Math.max(0, Math.min(1, (24 - ds) / 10));
         it.obj.position.y = it.baseY + (1 - fall) * 12;
@@ -842,7 +742,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
     // cámara: seguimiento ↔ vista de maqueta
     const sc = showcase && t < showcase.until ? zones[showcase.zone] : null;
-    if (clock.phase === 3 || ended) {
+    if (LINEUP) {
+      const a = curve.getPointAt(16 / L), b = curve.getPointAt(4 / L);
+      desiredPos.copy(b).setY(4.2);
+      desiredLook.copy(a).setY(1.3);
+    } else if (clock.phase === 3 || ended) {
       desiredPos.set(-29 + 62, 60, -29 + 70);
       desiredLook.set(-29, 18, -29);
     } else if (sc) {
