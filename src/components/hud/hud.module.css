@@ -78,6 +78,49 @@
   padding-right: calc(14 * var(--u));
 }
 
+.scoreHead {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+}
+
+.lives {
+  display: inline-flex;
+  gap: calc(3 * var(--u));
+}
+
+.lives svg {
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
+  stroke-width: 2.2;
+  transition: transform 0.3s, color 0.3s, fill 0.3s;
+}
+
+.lifeOn {
+  color: var(--red);
+  fill: var(--red);
+}
+
+.lifeOff {
+  color: #cfc6bc;
+  fill: transparent;
+  transform: scale(0.85);
+  animation: life-lost 0.5s ease;
+}
+
+@keyframes life-lost {
+  0% {
+    transform: scale(1.5);
+    color: var(--red);
+  }
+  60% {
+    transform: scale(0.7) rotate(-12deg);
+  }
+  100% {
+    transform: scale(0.85);
+  }
+}
+
 .scoreWrap {
   position: relative;
   display: flex;

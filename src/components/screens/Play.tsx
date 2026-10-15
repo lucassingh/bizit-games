@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
 import TechFrame, { frameInset, innerCut } from "../TechFrame";
 import SoundButton from "../SoundButton";
+import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -37,6 +38,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   const [hint, setHint] = useState<{ text: string; id: number } | null>(null);
   const [showGestures, setShowGestures] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [over, setOver] = useState<GameOutcome | null>(null);
   const instRef = useRef<GameInstance | null>(null);
   const g = GAMES[game];
 
@@ -53,6 +55,13 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       bgen: (expr, say) => useHud.getState().patch(say ? { expr, say: { text: say, id: ++n } } : { expr }),
       banner: (title, subtitle) => setBanner({ title, subtitle, id: ++n }),
       hint: (text) => setHint({ text, id: ++n }),
+      lives: (lives) => useHud.getState().patch({ lives }),
+      gameOver: (outcome) => {
+        if (disposed) return;
+        sfx("g.fail", { volume: 0.9, rate: 0.8 });
+        music.duck(0.25);
+        setOver(outcome);
+      },
       end: (outcome) => {
         if (!disposed) void finish(game, outcome);
       },
@@ -123,9 +132,10 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       <div className={p.stage}>
         <TechFrame cut={STAGE_CUT} notch={0.3} />
         <SoundButton />
-        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
+        <div ref={hostRef} className={`${p.host} ${over ? p.hostOver : ""}`} style={{ "--inset": `calc(${frameInset()} * var(--u))`, "--cut": `calc(${innerCut(STAGE_CUT)} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
+        {over && <GameOver outcome={over} game={game} onRetry={() => useDev.getState().restart()} />}
         {count !== null && !loading && (
           <div className={p.countdown} aria-live="assertive">
             <span key={count} className={p.count}>
@@ -158,6 +168,41 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
       </div>
       <Hud game={game} layout={layout} />
     </section>
+  );
+}
+
+/** Se acabaron las vidas: el escenario queda en gris y se ofrece reintentar o ver el resultado. */
+function GameOver({ outcome, game, onRetry }: { outcome: GameOutcome; game: GameId; onRetry: () => void }) {
+  const g = GAMES[game];
+  const [left, setLeft] = useState(20);
+  useEffect(() => {
+    if (left <= 0) {
+      void finish(game, outcome);
+      return;
+    }
+    const t = window.setTimeout(() => setLeft((l) => l - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [left, game, outcome]);
+  return (
+    <div className={p.over} role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <div className={p.overCard}>
+        <span className={p.overStamp}>Game over</span>
+        <BGen expr="mareado" size="min(16vh, 120px)" talkKey="over" />
+        <h2 id="over-title">¡Se acabaron las vidas!</h2>
+        <p>
+          Los Problemones te ganaron esta vez. Llegaste a <b>{outcome.score.toLocaleString("es-AR")}</b> puntos y {g.metricLabel.toLowerCase()} al <b>{outcome.metricValue}</b>.
+        </p>
+        <div className={p.overActions}>
+          <button className="btn btn-lg" onClick={onRetry}>
+            Reintentar
+          </button>
+          <button className="btn btn-light" onClick={() => void finish(game, outcome)}>
+            Ver mi resultado
+          </button>
+        </div>
+        <span className="eyebrow">Sigue solo en {left} s</span>
+      </div>
+    </div>
   );
 }
 

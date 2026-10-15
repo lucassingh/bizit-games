@@ -14,6 +14,10 @@ export interface GameHooks {
   banner(title: string, subtitle: string): void;
   /** Pista corta para el jugador ("¡Tocá rápido!"). */
   hint(text: string): void;
+  /** Vidas que quedan (los juegos que no usan vidas no lo llaman). */
+  lives(n: number): void;
+  /** Se acabaron las vidas: la app muestra "game over" con la opción de reintentar o ver el resultado. */
+  gameOver(outcome: GameOutcome): void;
   end(outcome: GameOutcome): void;
 }
 

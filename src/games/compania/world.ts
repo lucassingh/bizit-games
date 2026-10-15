@@ -182,7 +182,8 @@ export function buildWorld(scene: THREE.Scene) {
   sign(zones.ventas, -29, 9.5, 0);
   sign(zones.operaciones, 29, 9.5, 0, true);
   sign(zones.finanzas, 48.5, -29, Math.PI / 2);
-  sign(zones.hq, -29, -49.5, 0, true);
+  // el cartel de la Casa Central va al costado de la plaza (el riel termina al frente de la torre)
+  sign(zones.hq, -47, -44, 0.5, true);
 
   /* ---------- modelos del kit (asíncrono: la ciudad aparece en cuanto cargan) ---------- */
   const pmByZoneKit = new Map<string, PowerMaterial>();
@@ -243,7 +244,7 @@ export function buildWorld(scene: THREE.Scene) {
     // CASA CENTRAL (x<0, z<0): torre principal con plaza al frente (donde termina el riel)
     ["comercial", "building-skyscraper-b", -29, -24, Math.PI, S * 1.55, H],
     ["comercial", "building-k", -46, -40, Math.PI, S * 0.9, H],
-    ["comercial", "building-skyscraper-d", -12, -42, Math.PI, S * 0.9, H],
+    ["comercial", "building-skyscraper-d", -10, -38, Math.PI, S * 0.85, H],
     ["suburban", "planter", -38, -44, 0, S, H],
     ["suburban", "planter", -20, -44, 0, S, H],
     ["suburban", "tree-large", -49, -12, 0, T, H],
@@ -258,7 +259,7 @@ export function buildWorld(scene: THREE.Scene) {
     [40, -6.8, Math.PI],
     [64.8, 20, -R],
     [64.8, -30, -R],
-    [-20, -64.8, 0],
+    [-6, -64.8, 0],
     [-51.2, 60, R],
     [-51.2, 30, R],
   ] as const)
@@ -290,8 +291,9 @@ export function buildWorld(scene: THREE.Scene) {
     ["building-h", 76, -50, -R, 1.0],
     ["building-c", 40, -76, Math.PI, 1.0],
     ["building-e", 8, -78, Math.PI, 1.0],
-    ["building-k", -14, -76, Math.PI, 1.0],
-    ["building-h", -44, -76, Math.PI, 1.0],
+    // detrás de la plaza de la Casa Central no va nada alto: ahí se para la cámara del clímax
+    ["building-c", -2, -78, Math.PI, 0.9],
+    ["building-c", -58, -78, Math.PI, 0.9],
   ];
   for (const [name, x, zz, r, k] of outer) street.push(["comercial", name, x, zz, r, S * k]);
   for (const [x, zz] of [

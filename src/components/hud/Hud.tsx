@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Flame, Network, Users, Zap } from "lucide-react";
+import { Flame, Heart, Network, Users, Zap } from "lucide-react";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import TechFrame from "../TechFrame";
@@ -102,7 +102,7 @@ function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac
 
 export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "tablet" }) {
   const g = GAMES[game];
-  const { score, combo, phase, timeLeft, duration, metricValue, metricPct, expr, say } = useHud();
+  const { score, combo, phase, timeLeft, duration, metricValue, metricPct, expr, say, lives } = useHud();
   const tv = layout === "tv";
   const elapsedFrac = 1 - timeLeft / duration;
   const segs = 10;
@@ -110,7 +110,16 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
 
   const scoreBlock = (
     <div className={`${h.plaque} ${h.scorePlaque}`}>
-      <span className={h.label}>Puntaje</span>
+      <div className={h.scoreHead}>
+        <span className={h.label}>Puntaje</span>
+        {lives !== null && (
+          <span className={h.lives} aria-label={`${lives} vidas`}>
+            {[0, 1, 2].map((i) => (
+              <Heart key={i} className={i < lives ? h.lifeOn : h.lifeOff} />
+            ))}
+          </span>
+        )}
+      </div>
       <Score value={score} />
       {combo > 1 && (
         <span key={combo} className={h.combo}>

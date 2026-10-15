@@ -53,6 +53,8 @@ interface HudState {
   metricValue: string;
   /** 0..1 para la barra de la métrica estrella. */
   metricPct: number;
+  /** Vidas (null = el juego no usa vidas). */
+  lives: number | null;
   expr: Expr;
   say?: { text: string; id: number };
   levelUp?: { title: string; subtitle: string; id: number };
@@ -69,9 +71,10 @@ export const useHud = create<HudState>((set) => ({
   duration: 90,
   metricValue: "0%",
   metricPct: 0,
+  lives: null,
   expr: "reposo",
   reset: (duration) =>
-    set({ score: 0, combo: 1, phase: 0, timeLeft: duration, duration, metricValue: "0%", metricPct: 0, expr: "curioso", say: undefined, levelUp: undefined, hint: undefined }),
+    set({ score: 0, combo: 1, phase: 0, timeLeft: duration, duration, metricValue: "0%", metricPct: 0, lives: null, expr: "curioso", say: undefined, levelUp: undefined, hint: undefined }),
   // solo actualiza si algo cambió: los juegos reportan cada frame y no queremos re-render a 60 fps
   patch: (p) =>
     set((st) => {
