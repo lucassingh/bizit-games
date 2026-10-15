@@ -208,18 +208,18 @@ export const rubber = {
       const c = context();
       const out = master();
       const osc = c.createOscillator();
-      osc.type = "sawtooth";
+      osc.type = "triangle";
       const osc2 = c.createOscillator();
-      osc2.type = "triangle";
-      osc2.detune.value = 9;
+      osc2.type = "sine";
+      osc2.detune.value = 7;
       const lfo = c.createOscillator();
       lfo.frequency.value = 22;
       const lfoG = c.createGain();
       lfoG.gain.value = 0.35;
       const f = c.createBiquadFilter();
       f.type = "lowpass";
-      f.frequency.value = 900;
-      f.Q.value = 6;
+      f.frequency.value = 600;
+      f.Q.value = 2;
       const g = c.createGain();
       g.gain.value = 0;
       lfo.connect(lfoG).connect(g.gain);
@@ -236,12 +236,12 @@ export const rubber = {
   set(k: number) {
     if (!rub || !ctx) return;
     const now = ctx.currentTime;
-    const fr = 90 + k * 260;
+    const fr = 70 + k * 160;
     rub.osc.frequency.setTargetAtTime(fr, now, 0.03);
-    rub.osc2.frequency.setTargetAtTime(fr * 1.5, now, 0.03);
-    rub.f.frequency.setTargetAtTime(500 + k * 1600, now, 0.03);
-    rub.lfo.frequency.setTargetAtTime(14 + k * 26, now, 0.05);
-    rub.g.gain.setTargetAtTime(0.025 + k * 0.08, now, 0.04);
+    rub.osc2.frequency.setTargetAtTime(fr * 2, now, 0.03);
+    rub.f.frequency.setTargetAtTime(350 + k * 700, now, 0.03);
+    rub.lfo.frequency.setTargetAtTime(10 + k * 14, now, 0.05);
+    rub.g.gain.setTargetAtTime(0.008 + k * 0.03, now, 0.04);
   },
   release(snap = 1) {
     if (!rub || !ctx) return;

@@ -15,7 +15,7 @@ import { drawBackground, drawBands, drawEnemySprite, drawPlaque, drawSlingshot, 
  * 3 torres = Drive / Foundation / Evolution (con el jefe, el Caos Operativo).
  */
 
-const { Engine, Bodies, Body, Composite, Events, Vector } = Matter;
+const { Engine, Bodies, Body, Composite, Events, Sleeping, Vector } = Matter;
 
 type Kind = "box" | "binder" | "plank" | "cpu" | "clock" | "mail" | "factura" | "excel" | "fantasma" | "reporte" | "boss";
 type Agent = "bgen" | "cobranzas" | "voz" | "integrador" | "orquestador";
@@ -207,6 +207,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   Events.on(engine, "collisionStart", (ev) => {
     for (const pair of ev.pairs) {
       const a = pair.bodyA, b = pair.bodyB;
+      if (a.isSleeping && !b.isStatic) Sleeping.set(a, false);
+      if (b.isSleeping && !a.isStatic) Sleeping.set(b, false);
       const rel = Vector.magnitude(Vector.sub(a.velocity, b.velocity));
       if (rel < 2.2) continue;
       const proj = (x: Matter.Body) => !!(x.plugin as { agent?: Agent }).agent || minis.includes(x);
@@ -405,6 +407,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       rubber.release(Vector.magnitude(pull) / MAX_PULL);
       sfx("g.jump", { volume: 0.5, rate: 0.9 });
       Body.setStatic(current, false);
+      Sleeping.set(current, false);
       current.isSensor = false;
       Body.setVelocity(current, Vector.mult(pull, POWER));
       (current.plugin as { launched: boolean }).launched = true;
@@ -630,7 +633,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
     // gomera (parte de atrás; la horquilla delantera y la banda delantera van sobre el proyectil)
     drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "back");
-    if (current) drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "back");
+    drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "front");
+    if (current) {
+      drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "back");
+      drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "pouch");
+    }
 
     // trayectoria
     if (current) {
@@ -712,9 +719,27 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     // fila de agentes que quedan
     const shots = LEVEL_SHOTS[Math.min(level, 2)];
     const queue = shots.slice(shotIndex + (current ? 1 : 0));
+    if (queue.length) {
+      // banco de espera: placa clara con borde oscuro detrás de los agentes
+      const bw = queue.length * 66 + 24, bx = SLING.x - 110 - (queue.length - 1) * 64 - 33 - 12;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.strokeStyle = COLORS.carbon;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(bx, GROUND - 76, bw, 70, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = COLORS.naranja;
+      ctx.fillRect(bx + 10, GROUND - 76, 40, 4);
+      ctx.fillStyle = COLORS.carbon;
+      ctx.font = '800 9px Inter, Arial';
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText("EN ESPERA", bx + 10, GROUND - 64);
+    }
     queue.forEach((ag, i) => {
-      const x = SLING.x - 110 - i * 64, y = GROUND - 30;
-      drawBGen(ctx, x, y, 50, { expr: "reposo", t, blink: blink(t + i), gx: 4, gy: 0, talk: 0 }, ag === "orquestador" ? 1 : 0);
+      const x = SLING.x - 110 - i * 64, y = GROUND - 36;
+      drawBGen(ctx, x, y, 54, { expr: "reposo", t, blink: blink(t + i), gx: 4, gy: 0, talk: 0 }, ag === "orquestador" ? 1 : 0);
       const ic = AGENTS[ag].icon;
       if (ic) {
         ctx.fillStyle = AGENTS[ag].color;
@@ -724,12 +749,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         drawIcon(ctx, ic, x + 20, y - 20, 13, COLORS.negro, 2.6);
       }
     });
-    // horquilla delantera y banda delantera (sobre el proyectil, para que la bolsa lo envuelva)
-    if (current) drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "front");
-    drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "front");
+    // banda delantera (fina, sobre el proyectil; no tapa la cara)
+    if (current && aiming) drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "front");
     if (current && !aiming) {
       const ag = (current.plugin as { agent: Agent }).agent;
-      drawPlaque(ctx, SLING.x, SLING.y - 120, AGENTS[ag].name, ag === "bgen" ? "arrastrá hacia atrás y soltá" : `tocá ${AGENTS[ag].ability}`, ag === "bgen" ? COLORS.lima : AGENTS[ag].color);
+      drawPlaque(ctx, SLING.x, SLING.y - 120, AGENTS[ag].name, ag === "bgen" ? "arrastrá hacia atrás y soltá" : `tocá ${AGENTS[ag].ability}`);
     }
     popups.draw(ctx, 1 / 60, 1.2);
   }

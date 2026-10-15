@@ -320,7 +320,7 @@ export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: num
 }
 
 /** Bandas de la gomera: dos elásticos con brillo y la bolsa de cuero en la posición del proyectil. */
-export function drawBands(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, py: number, part: "back" | "front") {
+export function drawBands(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, py: number, part: "back" | "pouch" | "front") {
   ctx.save();
   ctx.lineCap = "round";
   const band = (fx: number) => {
@@ -338,18 +338,25 @@ export function drawBands(ctx: CanvasRenderingContext2D, sx: number, sy: number,
     ctx.stroke();
   };
   if (part === "back") band(sx + 36);
-  else {
-    band(sx - 36);
-    // bolsa
+  else if (part === "front") {
+    // banda delantera fina, no tapa la cara
+    ctx.strokeStyle = "#8C5A2B";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(sx - 36, sy - 16);
+    ctx.lineTo(px - 18, py + 6);
+    ctx.stroke();
+  } else {
+    // bolsa de cuero detrás del agente
     const dx = px - sx, dy = py - sy;
     const a = Math.atan2(dy, dx);
     ctx.translate(px, py);
     ctx.rotate(a);
     ctx.fillStyle = "#4A2E16";
-    rr(ctx, -10, -24, 20, 48, 8);
+    rr(ctx, -14, -30, 28, 60, 10);
     ctx.fill();
     ctx.strokeStyle = INK;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
   }
   ctx.restore();
@@ -649,7 +656,7 @@ export function drawEnemySprite(ctx: CanvasRenderingContext2D, kind: EnemyKind, 
 }
 
 /* ---------- placa de texto (nombre del agente, pistas) ---------- */
-export function drawPlaque(ctx: CanvasRenderingContext2D, x: number, y: number, title: string, sub?: string, accent: string = COLORS.lima) {
+export function drawPlaque(ctx: CanvasRenderingContext2D, x: number, y: number, title: string, sub?: string, accent: string = COLORS.naranja) {
   ctx.save();
   ctx.font = '900 17px "Archivo Black", Archivo, Arial';
   ctx.textAlign = "center";
@@ -673,7 +680,7 @@ export function drawPlaque(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.font = '900 17px "Archivo Black", Archivo, Arial';
   ctx.fillText(title, x, y - (sub ? 9 : 0));
   if (sub) {
-    ctx.fillStyle = accent;
+    ctx.fillStyle = "#FFD3B5";
     ctx.font = '600 13px Inter, Arial';
     ctx.fillText(sub, x, y + 13);
   }
