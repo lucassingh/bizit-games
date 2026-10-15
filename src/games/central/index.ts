@@ -6,15 +6,15 @@ import { COLORS } from "@/lib/brand";
 import { sfx } from "@/lib/audio";
 import { Crown, Users, type IconNode } from "lucide";
 import { drawIcon } from "../shared/icons";
-import { CITY_IMG, drawEnemySprite, type EnemyKind } from "../deploy/art";
-import { drawBoard, drawDesk, drawOfficeStatic } from "./office";
+import { drawEnemySprite, type EnemyKind } from "../deploy/art";
+import { drawBoard, drawNightStatic, drawPerson, drawWindows, HQ_IMG, towerWindows } from "./office";
 
 /**
  * Juego 3 · Bandeja BGen — "De manual a automático" (docs/05, v3).
- * La Casa Central por dentro. Los Problemones caen desde arriba sobre los
- * escritorios; BGen, abajo, se mueve a izquierda y derecha (arrastrar) y los
- * atrapa antes de que lleguen al equipo. Cada uno atrapado queda automatizado;
- * cada uno que cae frustra a alguien y cuesta una vida.
+ * La Casa Central de noche, desde la vereda. La empresa está desbordada y las
+ * tareas salen volando por las ventanas de la torre; el equipo espera en la
+ * puerta. BGen, en la vereda, se mueve (arrastrar) y dispara: cada tarea que
+ * alcanza queda automatizada; cada una que llega al equipo cuesta una vida.
  *  Drive: mails y leads, despacio.
  *  Foundation: más tipos y ritmo; power-up Equipo (BGen más ancho 6 s).
  *  Evolution: lluvia densa, documentos VIP (×3) y bombas DELETE (no atrapar);
@@ -23,9 +23,9 @@ import { drawBoard, drawDesk, drawOfficeStatic } from "./office";
  */
 
 const W = 1600, H = 700;
-const FLOOR = 590;
-const BY = FLOOR + 58; // BGen en el piso, delante de los escritorios
-const R = 40;
+const FLOOR = 600;
+const BY = FLOOR + 38; // BGen en la vereda
+const R = 46;
 const BOLT_SPEED = 1100;
 const FIRE_EVERY = 0.32;
 
@@ -67,7 +67,8 @@ const PHASE_KINDS: (EnemyKind | "vip" | "bomb")[][] = [
 const PHASE_EVERY = [1.15, 0.85, 0.62, 0.3];
 const PHASE_FALL = [150, 200, 260, 330];
 const ZONE_NAME = ["Ventas", "Operaciones", "Finanzas", "Casa Central"];
-const DESKS = [330, 560, 800, 1040, 1270];
+/** El equipo esperando en la puerta de la torre. */
+const TEAM = [640, 700, 900, 960];
 
 const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const { canvas, ctx, state, dispose } = fitCanvas(host);
@@ -97,8 +98,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const bolts: Bolt[] = [];
   let holding = false;
   let fireIn = 0;
-  const deskMood = DESKS.map(() => 0.2);
-  const deskShake = DESKS.map(() => 0);
+  const deskMood = TEAM.map(() => 0.2);
+  const deskShake = TEAM.map(() => 0);
+  const WINS = towerWindows(W, FLOOR);
   let powerSpawned = [false, false];
 
   const say = (e: Expr, text?: string, hold = 1.2) => {
@@ -169,10 +171,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const kinds = PHASE_KINDS[p];
     const k = kind ?? kinds[Math.floor(rand() * kinds.length)];
     const power = k === "team" || k === "orq";
+    const fromWin = rand() < 0.7;
+    const win = WINS[Math.floor(rand() * WINS.length)];
     drops.push({
       kind: k,
-      x: 170 + rand() * (W - 340),
-      y: -60,
+      x: fromWin ? win.x + (rand() - 0.5) * win.w * 0.8 : 170 + rand() * (W - 340),
+      y: fromWin ? win.y : -60,
       vy: PHASE_FALL[p] * (0.85 + rand() * 0.3) * (power ? 0.8 : 1),
       rot: (rand() - 0.5) * 0.5,
       vr: (rand() - 0.5) * 1.2,
@@ -321,18 +325,18 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         say(caught % 6 === 0 ? "logro" : "procesando", caught % 6 === 0 ? "¡Automatizado!" : undefined, 0.8);
         continue;
       }
-      // ¿llegó al escritorio?
-      if (d.y + d.r >= FLOOR - 70) {
+      // ¿llegó a la vereda (al equipo)?
+      if (d.y + d.r >= FLOOR - 30) {
         d.dead = true;
         if (d.kind === "bomb") {
           // la bomba se desactiva sola en el piso
-          burst(d.x, FLOOR - 70, 8, ["#999"]);
+          burst(d.x, FLOOR - 30, 8, ["#999"]);
           continue;
         }
         dropped++;
-        burst(d.x, FLOOR - 70, 12, ["#D9CBB0", "#BDB3A0"]);
+        burst(d.x, FLOOR - 30, 12, ["#D9CBB0", "#BDB3A0"]);
         sfx("g.near", { volume: 0.4, rate: 0.7 });
-        loseLife(["¡Uy! Se le cayó al equipo.", "¡Ay! Esa tarea quedó sin hacer.", "¡Otra más al escritorio!"][dropped % 3], nearestDesk(d.x));
+        loseLife(["¡Uy! Le cayó al equipo.", "¡Ay! Esa tarea quedó sin hacer.", "¡Otra más a la vereda!"][dropped % 3], nearestDesk(d.x));
       }
     }
     for (let i = drops.length - 1; i >= 0; i--) if (drops[i].dead) drops.splice(i, 1);
@@ -393,7 +397,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
   function nearestDesk(x: number) {
     let best = 0;
-    for (let i = 1; i < DESKS.length; i++) if (Math.abs(DESKS[i] - x) < Math.abs(DESKS[best] - x)) best = i;
+    for (let i = 1; i < TEAM.length; i++) if (Math.abs(TEAM[i] - x) < Math.abs(TEAM[best] - x)) best = i;
     return best;
   }
 
@@ -405,7 +409,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     return { s, ox: (state.w - W * s) / 2, oy: (state.h - H * s) / 2 };
   }
   function background(v: ReturnType<typeof view>) {
-    const key = `${state.w}x${state.h}@${state.dpr}:${CITY_IMG?.complete && CITY_IMG.naturalWidth ? 1 : 0}`;
+    const key = `${state.w}x${state.h}@${state.dpr}:${HQ_IMG?.complete && HQ_IMG.naturalWidth ? 1 : 0}`;
     if (bg && bgKey === key) return bg;
     bgKey = key;
     bg = document.createElement("canvas");
@@ -413,15 +417,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     bg.height = Math.round(state.h * state.dpr);
     const g = bg.getContext("2d")!;
     g.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-    g.fillStyle = "#F4F1EC";
+    g.fillStyle = "#0d1020";
     g.fillRect(0, 0, state.w, state.h);
     g.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * v.ox, state.dpr * v.oy);
-    // la pared y el piso se extienden fuera del mundo para cubrir cualquier proporción
-    g.fillStyle = "#F4F1EC";
-    g.fillRect(-W, -H, W * 3, FLOOR + H);
-    g.fillStyle = "#C9BEB0";
-    g.fillRect(-W, FLOOR, W * 3, H * 2);
-    drawOfficeStatic(g, W, H, FLOOR, CITY_IMG);
+    drawNightStatic(g, W, H, FLOOR);
     return bg;
   }
 
@@ -518,19 +517,21 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const shy = shake > 0.01 ? (Math.random() - 0.5) * 10 * shake : 0;
     ctx.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * (v.ox + shx * v.s), state.dpr * (v.oy + shy * v.s));
 
+    // ventanas encendidas (las de arriba pasan a lima con lo automatizado)
+    drawWindows(ctx, WINS, t, metricPct());
     // tablero
     drawBoard(ctx, W - 190, 70, caught, total);
 
-    // escritorios con el equipo
-    DESKS.forEach((x, i) => {
+    // el equipo en la puerta
+    TEAM.forEach((x, i) => {
       const sx = deskShake[i] > 0 ? Math.sin(t * 50) * 4 * deskShake[i] : 0;
-      drawDesk(ctx, x + sx, FLOOR, deskMood[i], t, i);
+      drawPerson(ctx, x + sx, FLOOR, deskMood[i], t, i);
     });
 
     // el Caos
     if (clock.phase === 3 && bossY > -150) {
       ctx.save();
-      ctx.translate(W / 2 + Math.sin(t * 1.3) * 180, bossY + Math.sin(t * 2.2) * 14);
+      ctx.translate(W / 2 + Math.sin(t * 1.3) * 120, bossY + Math.sin(t * 2.2) * 14);
       drawEnemySprite(ctx, "boss", 64, t, 0);
       ctx.restore();
     }

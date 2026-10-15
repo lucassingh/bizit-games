@@ -114,6 +114,47 @@ export default function RenderTool() {
         renderer.render(scene, cam);
         out.city = renderer.domElement.toDataURL("image/png");
         say("city ok");
+
+        /* ---------- Casa Central de noche, de frente (fondo del juego 3) ---------- */
+        {
+          // luz nocturna: hemisferio azulado tenue + luna fría; las ventanas se "encienden" con emisivo
+          scene.children.filter((o) => (o as { isLight?: boolean }).isLight).forEach((l) => scene.remove(l));
+          scene.add(new THREE.HemisphereLight("#8fa6d6", "#2a2e3c", 0.9));
+          const moon = new THREE.DirectionalLight("#c9d6f0", 1.1);
+          moon.position.set(60, 90, -40);
+          scene.add(moon);
+          scene.traverse((o) => {
+            const m = o as { isMesh?: boolean; material?: { isMeshStandardMaterial?: boolean; emissive?: unknown; emissiveIntensity?: number } };
+            const mat = m.material;
+            if (!m.isMesh || !mat || !mat.isMeshStandardMaterial) return;
+            // tono nocturno general
+            mat.emissive = new THREE.Color("#0b0e18");
+            mat.emissiveIntensity = 1;
+          });
+          const W2 = 2400, H2 = 1400;
+          renderer.setSize(W2, H2);
+          const cam2 = new THREE.PerspectiveCamera(30, W2 / H2, 1, 1000);
+          // de frente a la Casa Central (está en x<0, z<0; su frente mira a +z), baja y cerca: la torre llena el cuadro
+          // se despeja el lote de Ventas (está entre la cámara y la Casa Central) y se mira la torre de frente
+          for (const o of [...scene.children]) {
+            if (o.position.x < 2 && o.position.z > 2 && o.position.z < 70 && !(o as { isLight?: boolean }).isLight) o.visible = false;
+          }
+          const hqSign = scene.getObjectByName("sign:hq");
+          if (hqSign) {
+            hqSign.position.set(-66, 2.4, -22);
+            hqSign.rotation.set(0, 0.6, 0);
+            hqSign.scale.setScalar(0.9);
+          }
+          cam2.fov = 40;
+          cam2.position.set(-29, 14, 62);
+          cam2.lookAt(-29, 30, -29);
+          cam2.updateProjectionMatrix();
+          renderer.setClearColor(0x0d1020, 1);
+          renderer.render(scene, cam2);
+          out.hqNight = renderer.domElement.toDataURL("image/png");
+          renderer.setClearColor(0x000000, 0);
+          say("hq night ok");
+        }
       }
       (window as unknown as { __sprites: Record<string, string>; __done: boolean }).__sprites = out;
       (window as unknown as { __done: boolean }).__done = true;
