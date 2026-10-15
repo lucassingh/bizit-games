@@ -21,7 +21,14 @@ export function warmCache() {
 
 export default function ServiceWorker() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") return;
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV !== "production") {
+      // en desarrollo, un SW que haya quedado de un `npm start` anterior en este mismo origen
+      // serviría los chunks viejos desde su caché: se desinstala y se limpia
+      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      if ("caches" in window) caches.keys().then((ks) => ks.forEach((k) => void caches.delete(k))).catch(() => {});
+      return;
+    }
     navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {
       /* sin SW la app igual funciona online */
     });

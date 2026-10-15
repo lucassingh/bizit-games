@@ -8,7 +8,7 @@
  *
  * Para forzar una limpieza total, subí VERSION.
  */
-const VERSION = "bgc-v1";
+const VERSION = "bgc-v2";
 const PAGES = `${VERSION}-pages`;
 const STATIC = `${VERSION}-static`;
 const PRECACHE = ["/", "/config", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/brand/bgen-personaje.svg"];
@@ -52,7 +52,9 @@ async function cacheFirst(request) {
   const hit = await cache.match(request);
   if (hit) return hit;
   const res = await fetch(request);
-  if (res && res.ok) cache.put(request, res.clone());
+  // los chunks de `next dev` no llevan hash y vienen con no-store: no se guardan nunca
+  const cc = (res && res.headers.get("cache-control")) || "";
+  if (res && res.ok && !/no-store/i.test(cc)) cache.put(request, res.clone());
   return res;
 }
 
