@@ -1,0 +1,689 @@
+import { COLORS } from "@/lib/brand";
+
+/**
+ * Arte 2D de Deploy BGen: fondo (patio de la compañía, misma paleta que la
+ * ciudad Kenney del juego 1), gomera de madera, Problemones con cara y placas
+ * de texto. Todo dibujado con Canvas 2D, sin assets externos.
+ */
+
+const INK = COLORS.carbon;
+const NAVY = "#3A3F4B";
+const WALL = "#F2EEE8";
+const WALL2 = "#E4DED6";
+const WIN = "#7FB0D8";
+const WIN2 = "#B9D6EC";
+const GREEN = "#3F9E5C";
+const GREEN2 = "#2E7A45";
+const TRUNK = "#9A6B42";
+
+function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  g.beginPath();
+  g.roundRect(x, y, w, h, r);
+}
+
+/* ---------- fondo ---------- */
+export function drawBackground(g: CanvasRenderingContext2D, W: number, H: number, GROUND: number) {
+  // cielo
+  const sky = g.createLinearGradient(0, 0, 0, GROUND);
+  sky.addColorStop(0, "#BFE0F3");
+  sky.addColorStop(0.55, "#E6F1F6");
+  sky.addColorStop(1, "#FBF6EF");
+  g.fillStyle = sky;
+  g.fillRect(-W, -H, W * 3, GROUND + H);
+  // sol
+  const sun = g.createRadialGradient(W * 0.78, 90, 10, W * 0.78, 90, 220);
+  sun.addColorStop(0, "rgba(255,221,150,0.9)");
+  sun.addColorStop(1, "rgba(255,221,150,0)");
+  g.fillStyle = sun;
+  g.fillRect(0, 0, W, 400);
+  // nubes
+  g.fillStyle = "rgba(255,255,255,0.9)";
+  for (const [x, y, s] of [
+    [180, 110, 0.9],
+    [620, 70, 0.7],
+    [1120, 120, 0.9],
+    [1480, 60, 0.6],
+  ]) {
+    for (const [dx, dy, r] of [
+      [0, 0, 34],
+      [34, -14, 42],
+      [78, 0, 32],
+      [40, 14, 30],
+    ]) {
+      g.beginPath();
+      g.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  // skyline lejano (azulado, plano)
+  g.fillStyle = "#CFD9E3";
+  for (const [x, w, h] of [
+    [-40, 120, 230],
+    [90, 70, 320],
+    [170, 150, 190],
+    [340, 90, 280],
+    [440, 160, 210],
+    [620, 80, 360],
+    [710, 140, 240],
+    [860, 110, 300],
+    [980, 170, 200],
+    [1170, 90, 330],
+    [1270, 150, 250],
+    [1440, 100, 290],
+    [1550, 160, 210],
+  ]) {
+    g.fillRect(x, GROUND - h - 40, w, h + 40);
+    g.fillStyle = "#DCE5EC";
+    for (let yy = GROUND - h - 20; yy < GROUND - 60; yy += 28) for (let xx = x + 12; xx < x + w - 12; xx += 22) g.fillRect(xx, yy, 10, 14);
+    g.fillStyle = "#CFD9E3";
+  }
+
+  // edificios de la compañía (estilo Kenney: blanco, techos azul noche, ventanas celestes, toldos naranjas)
+  const office = (x: number, w: number, floors: number, awning = false, sign?: string) => {
+    const fh = 58;
+    const h = floors * fh + 24;
+    const y = GROUND - h;
+    g.fillStyle = WALL;
+    g.fillRect(x, y, w, h);
+    g.fillStyle = WALL2;
+    g.fillRect(x + w - 14, y, 14, h);
+    g.fillStyle = NAVY;
+    g.fillRect(x - 6, y - 14, w + 12, 18);
+    g.fillRect(x + w * 0.3, y - 26, w * 0.25, 14);
+    for (let f = 0; f < floors; f++) {
+      const wy = y + 20 + f * fh;
+      const last = f === floors - 1;
+      for (let wx = x + 16; wx < x + w - 30; wx += 44) {
+        if (last && awning) {
+          rr(g, wx, wy + 4, 30, 40, 4);
+          g.fillStyle = WIN2;
+          g.fill();
+        } else {
+          rr(g, wx, wy, 30, 30, 4);
+          g.fillStyle = WIN;
+          g.fill();
+          g.fillStyle = WIN2;
+          g.fillRect(wx + 4, wy + 4, 10, 10);
+        }
+        g.strokeStyle = NAVY;
+        g.lineWidth = 3;
+        rr(g, wx, wy + (last && awning ? 4 : 0), 30, last && awning ? 40 : 30, 4);
+        g.stroke();
+      }
+      if (last && awning) {
+        g.fillStyle = COLORS.naranja;
+        g.fillRect(x + 6, wy - 6, w - 12, 12);
+        for (let k = x + 6; k < x + w - 12; k += 22) g.fillRect(k, wy + 6, 11, 6);
+      }
+    }
+    // puerta
+    g.fillStyle = NAVY;
+    rr(g, x + w / 2 - 16, GROUND - 46, 32, 46, 4);
+    g.fill();
+    g.fillStyle = WIN2;
+    g.fillRect(x + w / 2 - 10, GROUND - 40, 20, 20);
+    if (sign) {
+      g.fillStyle = COLORS.naranja;
+      const sw = sign.length * 11 + 24;
+      rr(g, x + w / 2 - sw / 2, y + 2, sw, 20, 3);
+      g.fill();
+      g.fillStyle = "#fff";
+      g.font = '900 12px "Archivo Black", Arial';
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(sign, x + w / 2, y + 12);
+    }
+  };
+  const factory = (x: number, w: number) => {
+    const h = 150;
+    const y = GROUND - h;
+    g.fillStyle = WALL2;
+    g.fillRect(x, y, w, h);
+    // techo dentado
+    g.fillStyle = NAVY;
+    for (let k = x; k < x + w; k += 50) {
+      g.beginPath();
+      g.moveTo(k, y);
+      g.lineTo(k + 32, y - 34);
+      g.lineTo(k + 50, y);
+      g.closePath();
+      g.fill();
+      g.fillStyle = WIN;
+      g.beginPath();
+      g.moveTo(k + 34, y - 30);
+      g.lineTo(k + 48, y - 2);
+      g.lineTo(k + 34, y - 2);
+      g.closePath();
+      g.fill();
+      g.fillStyle = NAVY;
+    }
+    // chimeneas con anillo naranja
+    for (const cx of [x + 30, x + 70]) {
+      g.fillStyle = "#D8D2CA";
+      g.fillRect(cx, y - 120, 22, 120);
+      g.fillStyle = COLORS.naranja;
+      g.fillRect(cx - 2, y - 120, 26, 10);
+      g.fillStyle = NAVY;
+      g.fillRect(cx - 2, y - 60, 26, 6);
+    }
+    // portón
+    g.fillStyle = NAVY;
+    g.fillRect(x + w - 90, GROUND - 80, 70, 80);
+    g.fillStyle = "#B8B0A6";
+    for (let k = 0; k < 5; k++) g.fillRect(x + w - 86, GROUND - 74 + k * 14, 62, 6);
+    // tanque
+    g.fillStyle = "#E6E0D8";
+    rr(g, x - 60, GROUND - 70, 48, 70, 8);
+    g.fill();
+    g.fillStyle = COLORS.naranja;
+    g.fillRect(x - 60, GROUND - 44, 48, 8);
+  };
+  const tree = (x: number, s: number) => {
+    g.fillStyle = TRUNK;
+    g.fillRect(x - 5 * s, GROUND - 40 * s, 10 * s, 40 * s);
+    for (const [dx, dy, r, c] of [
+      [0, -62, 30, GREEN],
+      [-20, -46, 22, GREEN2],
+      [22, -48, 24, GREEN2],
+      [0, -40, 26, GREEN],
+    ] as [number, number, number, string][]) {
+      g.fillStyle = c;
+      g.beginPath();
+      g.arc(x + dx * s, GROUND + dy * s, r * s, 0, Math.PI * 2);
+      g.fill();
+    }
+  };
+  const car = (x: number, color: string) => {
+    g.fillStyle = color;
+    rr(g, x, GROUND - 30, 86, 24, 6);
+    g.fill();
+    rr(g, x + 18, GROUND - 48, 46, 22, 6);
+    g.fill();
+    g.fillStyle = WIN2;
+    rr(g, x + 24, GROUND - 44, 34, 14, 3);
+    g.fill();
+    g.fillStyle = INK;
+    for (const wx of [x + 18, x + 66]) {
+      g.beginPath();
+      g.arc(wx, GROUND - 6, 9, 0, Math.PI * 2);
+      g.fill();
+    }
+  };
+
+  office(30, 190, 3, false, "VENTAS");
+  office(300, 150, 2, true);
+  factory(520, 260, );
+  office(900, 130, 4, false, "FINANZAS");
+  // casa central: la torre
+  {
+    const x = 1080, w = 120, h = 420, y = GROUND - h;
+    g.fillStyle = WALL;
+    g.fillRect(x, y, w, h);
+    g.fillStyle = WALL2;
+    g.fillRect(x + w - 16, y, 16, h);
+    g.fillStyle = NAVY;
+    g.fillRect(x - 6, y - 12, w + 12, 16);
+    g.fillRect(x + 48, y - 40, 24, 30);
+    for (let yy = y + 26; yy < GROUND - 60; yy += 36) {
+      g.fillStyle = WIN;
+      g.fillRect(x + 12, yy, w - 36, 22);
+      g.fillStyle = WIN2;
+      g.fillRect(x + 12, yy, 22, 8);
+    }
+    g.fillStyle = COLORS.naranja;
+    rr(g, x + 8, y + 10, w - 32, 22, 3);
+    g.fill();
+    g.fillStyle = "#fff";
+    g.font = '900 11px "Archivo Black", Arial';
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("CASA CENTRAL", x + 8 + (w - 32) / 2, y + 21);
+  }
+  office(1560, 170, 3);
+  tree(260, 1);
+  tree(880, 0.8);
+  tree(1540, 1.1);
+  car(360, COLORS.naranja);
+  car(1310, "#5B6B7A");
+
+  // piso: césped, vereda y patio de asfalto con líneas de estacionamiento
+  g.fillStyle = "#CDE4BE";
+  g.fillRect(-W, GROUND, W * 3, 16);
+  g.fillStyle = "#E7E1DA";
+  g.fillRect(-W, GROUND + 16, W * 3, 14);
+  g.fillStyle = "#9A9DA6";
+  g.fillRect(-W, GROUND + 30, W * 3, 200);
+  g.fillStyle = "#E3B23C";
+  for (let k = -W; k < W * 2; k += 160) g.fillRect(k, GROUND + 60, 70, 5);
+}
+
+/* ---------- gomera ---------- */
+export function drawSlingshot(ctx: CanvasRenderingContext2D, sx: number, sy: number, ground: number, part: "back" | "front") {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const wood = (w: number, col: string) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(sx, ground - 4);
+    ctx.lineTo(sx, sy + 62);
+    ctx.quadraticCurveTo(sx - 6, sy + 20, sx - 36, sy - 14);
+    ctx.moveTo(sx, sy + 62);
+    ctx.quadraticCurveTo(sx + 8, sy + 20, sx + 36, sy - 14);
+    ctx.stroke();
+  };
+  if (part === "back") {
+    wood(26, INK);
+    wood(19, "#8C5A2B");
+    // veta
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(sx - 4, ground - 10);
+    ctx.lineTo(sx - 4, sy + 70);
+    ctx.stroke();
+    // base con placa DEPLOY
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.moveTo(sx - 46, ground);
+    ctx.lineTo(sx + 46, ground);
+    ctx.lineTo(sx + 36, ground - 18);
+    ctx.lineTo(sx - 36, ground - 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = COLORS.naranja;
+    ctx.beginPath();
+    ctx.moveTo(sx - 40, ground - 3);
+    ctx.lineTo(sx + 40, ground - 3);
+    ctx.lineTo(sx + 32, ground - 16);
+    ctx.lineTo(sx - 32, ground - 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = '900 10px "Archivo Black", Arial';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("DEPLOY", sx, ground - 9.5);
+  } else {
+    // puntas de las horquillas con cuero
+    for (const x of [sx - 36, sx + 36]) {
+      ctx.fillStyle = "#4A2E16";
+      rr(ctx, x - 9, sy - 30, 18, 22, 5);
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** Bandas de la gomera: dos elásticos con brillo y la bolsa de cuero en la posición del proyectil. */
+export function drawBands(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, py: number, part: "back" | "front") {
+  ctx.save();
+  ctx.lineCap = "round";
+  const band = (fx: number) => {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 11;
+    ctx.beginPath();
+    ctx.moveTo(fx, sy - 16);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+    ctx.strokeStyle = "#8C5A2B";
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  };
+  if (part === "back") band(sx + 36);
+  else {
+    band(sx - 36);
+    // bolsa
+    const dx = px - sx, dy = py - sy;
+    const a = Math.atan2(dy, dx);
+    ctx.translate(px, py);
+    ctx.rotate(a);
+    ctx.fillStyle = "#4A2E16";
+    rr(ctx, -10, -24, 20, 48, 8);
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---------- Problemones ---------- */
+export type EnemyKind = "mail" | "factura" | "excel" | "fantasma" | "reporte" | "boss";
+type Mood = "cansado" | "preocupado" | "zombie" | "panico" | "enojado" | "furioso";
+
+function face(ctx: CanvasRenderingContext2D, mood: Mood, r: number, t: number, phase: number) {
+  const blink = ((t + phase) % 3.4) > 3.25;
+  const eye = (x: number, y: number, er: number, px = 0, py = 0.15, pupil = 0.5) => {
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(2, r * 0.08);
+    ctx.beginPath();
+    ctx.arc(x, y, er, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    if (blink) {
+      ctx.beginPath();
+      ctx.moveTo(x - er, y);
+      ctx.quadraticCurveTo(x, y + er * 0.8, x + er, y);
+      ctx.stroke();
+      return;
+    }
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.arc(x + px * er, y + py * er, er * pupil, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(x + px * er - er * 0.18, y + py * er - er * 0.2, er * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const brow = (x: number, y: number, len: number, ang: number) => {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(3, r * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(x - (len / 2) * Math.cos(ang), y - (len / 2) * Math.sin(ang));
+    ctx.lineTo(x + (len / 2) * Math.cos(ang), y + (len / 2) * Math.sin(ang));
+    ctx.stroke();
+  };
+  const ex = r * 0.36, ey = -r * 0.12, er = r * 0.26;
+  ctx.lineCap = "round";
+  switch (mood) {
+    case "cansado":
+      eye(-ex, ey, er, 0, 0.35);
+      eye(ex, ey, er, 0, 0.35);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(2, r * 0.09);
+      ctx.beginPath();
+      ctx.moveTo(-ex - er, ey - er * 0.2);
+      ctx.lineTo(-ex + er, ey - er * 0.2);
+      ctx.moveTo(ex - er, ey - er * 0.2);
+      ctx.lineTo(ex + er, ey - er * 0.2);
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.45, r * 0.14, r * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case "preocupado":
+      eye(-ex, ey + r * 0.05, er, 0.1, 0.05);
+      eye(ex, ey + r * 0.05, er, 0.1, 0.05);
+      brow(-ex, ey - er * 1.5, r * 0.4, 0.35);
+      brow(ex, ey - er * 1.5, r * 0.4, -0.35);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(2, r * 0.09);
+      ctx.beginPath();
+      ctx.arc(0, r * 0.62, r * 0.2, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+      break;
+    case "zombie":
+      eye(-ex, ey, er * 1.25, -0.2, 0.2, 0.3);
+      eye(ex, ey + r * 0.1, er * 0.8, 0.3, 0, 0.5);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(2, r * 0.09);
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, r * 0.5);
+      for (let k = 0; k < 4; k++) ctx.lineTo(-r * 0.4 + (k + 0.5) * r * 0.2, r * 0.5 + (k % 2 ? 0.1 : -0.08) * r);
+      ctx.lineTo(r * 0.4, r * 0.5);
+      ctx.stroke();
+      break;
+    case "panico":
+      eye(-ex, ey, er * 1.1, 0, 0, 0.3);
+      eye(ex, ey, er * 1.1, 0, 0, 0.3);
+      brow(-ex, ey - er * 1.7, r * 0.36, 0.3);
+      brow(ex, ey - er * 1.7, r * 0.36, -0.3);
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.5, r * 0.18, r * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case "enojado":
+    case "furioso": {
+      const k = mood === "furioso" ? 1.3 : 1;
+      eye(-ex, ey + r * 0.05, er * k, 0.15, 0.1);
+      eye(ex, ey + r * 0.05, er * k, -0.15, 0.1);
+      brow(-ex, ey - er * 1.3, r * 0.44, -0.55);
+      brow(ex, ey - er * 1.3, r * 0.44, 0.55);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(2, r * 0.1);
+      ctx.beginPath();
+      ctx.arc(0, r * 0.72, r * 0.22, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      if (mood === "furioso") {
+        ctx.fillStyle = "#fff";
+        for (let i = -2; i <= 2; i++) ctx.fillRect(i * r * 0.1 - r * 0.04, r * 0.5, r * 0.08, r * 0.1);
+      }
+      break;
+    }
+  }
+}
+
+/** Dibuja el Problemón centrado en (0,0) con radio físico r (ya rotado por el cuerpo). */
+export function drawEnemySprite(ctx: CanvasRenderingContext2D, kind: EnemyKind, r: number, t: number, phase: number) {
+  ctx.save();
+  ctx.lineJoin = "round";
+  const outline = () => {
+    ctx.lineWidth = Math.max(2.5, r * 0.1);
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+  };
+  switch (kind) {
+    case "mail": {
+      // pila de sobres
+      for (let i = 2; i >= 0; i--) {
+        ctx.save();
+        ctx.translate((i - 1) * r * 0.08, r * 0.55 - i * r * 0.5);
+        ctx.rotate((i % 2 ? 1 : -1) * 0.06);
+        rr(ctx, -r, -r * 0.3, r * 2, r * 0.6, r * 0.1);
+        ctx.fillStyle = i % 2 ? "#E8DDC6" : "#F6EEDC";
+        ctx.fill();
+        outline();
+        ctx.beginPath();
+        ctx.moveTo(-r, -r * 0.3);
+        ctx.lineTo(0, r * 0.1);
+        ctx.lineTo(r, -r * 0.3);
+        ctx.lineWidth = Math.max(2, r * 0.06);
+        ctx.stroke();
+        if (i === 1) {
+          ctx.fillStyle = COLORS.rojo;
+          rr(ctx, r * 0.45, -r * 0.22, r * 0.4, r * 0.2, 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      ctx.translate(0, -r * 0.35);
+      face(ctx, "cansado", r * 0.8, t, phase);
+      break;
+    }
+    case "fantasma": {
+      ctx.beginPath();
+      ctx.moveTo(-r, r * 0.2);
+      ctx.arc(0, 0, r, Math.PI, 0);
+      ctx.lineTo(r, r * 0.95);
+      for (let k = 0; k < 4; k++) ctx.lineTo(r - (k + 0.5) * (r / 2), r * (k % 2 ? 0.95 : 0.75));
+      ctx.closePath();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fill();
+      outline();
+      // portapapeles LEAD
+      ctx.save();
+      ctx.translate(r * 0.75, r * 0.35);
+      ctx.rotate(0.25);
+      rr(ctx, -r * 0.28, -r * 0.38, r * 0.56, r * 0.76, r * 0.06);
+      ctx.fillStyle = "#4B4F57";
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-r * 0.22, -r * 0.26, r * 0.44, r * 0.58);
+      ctx.fillStyle = COLORS.rojo;
+      ctx.font = `900 ${Math.round(r * 0.22)}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("LEAD", 0, -r * 0.1);
+      ctx.fillStyle = "#9aa0a6";
+      for (let k = 0; k < 3; k++) ctx.fillRect(-r * 0.18, r * 0.05 + k * r * 0.09, r * (0.36 - k * 0.08), r * 0.04);
+      ctx.restore();
+      face(ctx, "preocupado", r, t, phase);
+      break;
+    }
+    case "excel": {
+      rr(ctx, -r * 0.9, -r, r * 1.8, r * 2, r * 0.12);
+      ctx.fillStyle = "#5FA66B";
+      ctx.fill();
+      outline();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 2;
+      for (let k = -2; k <= 2; k++) {
+        ctx.beginPath();
+        ctx.moveTo(k * r * 0.36, -r);
+        ctx.lineTo(k * r * 0.36, r);
+        ctx.moveTo(-r * 0.9, k * r * 0.4);
+        ctx.lineTo(r * 0.9, k * r * 0.4);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(-r * 0.54, r * 0.4, r * 0.36, r * 0.4);
+      ctx.fillRect(r * 0.18, -r * 0.8, r * 0.36, r * 0.4);
+      // brazos de zombie
+      for (const sx of [-1, 1]) {
+        rr(ctx, sx * r * 0.95 - (sx < 0 ? r * 0.5 : 0), -r * 0.1, r * 0.5, r * 0.26, r * 0.1);
+        ctx.fillStyle = "#2F6B3A";
+        ctx.fill();
+        outline();
+      }
+      face(ctx, "zombie", r * 0.9, t, phase);
+      break;
+    }
+    case "factura": {
+      rr(ctx, -r * 0.85, -r, r * 1.7, r * 2, r * 0.08);
+      ctx.fillStyle = "#F6E7A8";
+      ctx.fill();
+      outline();
+      ctx.fillStyle = "#8a7d55";
+      for (let k = 0; k < 4; k++) ctx.fillRect(-r * 0.6, r * 0.2 + k * r * 0.17, r * (1.1 - (k % 2) * 0.3), r * 0.07);
+      // sello VENCIDA
+      ctx.save();
+      ctx.rotate(-0.3);
+      ctx.strokeStyle = COLORS.rojo;
+      ctx.lineWidth = Math.max(2, r * 0.08);
+      ctx.beginPath();
+      ctx.arc(0, r * 0.45, r * 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.rojo;
+      ctx.font = `900 ${Math.round(r * 0.2)}px "Archivo Black", Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("VENCIDA", 0, r * 0.45);
+      ctx.restore();
+      // despertador
+      ctx.fillStyle = COLORS.rojo;
+      ctx.beginPath();
+      ctx.arc(r * 0.55, -r * 1.05, r * 0.26, 0, Math.PI * 2);
+      ctx.fill();
+      outline();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(r * 0.55, -r * 1.05, r * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.translate(0, -r * 0.35);
+      face(ctx, "panico", r * 0.85, t, phase);
+      break;
+    }
+    case "reporte": {
+      // carpeta gris con pestaña y gráfico que cae
+      rr(ctx, -r, -r * 0.7, r * 2, r * 1.7, r * 0.12);
+      ctx.fillStyle = "#C9C2B8";
+      ctx.fill();
+      outline();
+      rr(ctx, -r, -r, r * 0.9, r * 0.5, r * 0.1);
+      ctx.fillStyle = "#C9C2B8";
+      ctx.fill();
+      outline();
+      ctx.strokeStyle = COLORS.rojo;
+      ctx.lineWidth = Math.max(2, r * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, r * 0.2);
+      ctx.lineTo(-r * 0.2, r * 0.45);
+      ctx.lineTo(r * 0.15, r * 0.3);
+      ctx.lineTo(r * 0.6, r * 0.8);
+      ctx.stroke();
+      ctx.translate(0, -r * 0.15);
+      face(ctx, "enojado", r * 0.8, t, phase);
+      break;
+    }
+    case "boss": {
+      // el Caos: torbellino de papeles con cara furiosa
+      for (let k = 0; k < 18; k++) {
+        const a = t * 2.4 + k * 0.7;
+        const rad = r * (0.95 + 0.25 * Math.sin(t * 3 + k));
+        ctx.save();
+        ctx.translate(Math.cos(a) * rad, Math.sin(a) * rad * 0.55 - r * 0.1);
+        ctx.rotate(a * 1.5);
+        ctx.fillStyle = k % 3 === 0 ? "#D9CBB0" : k % 3 === 1 ? "#BDB3A0" : "#EDE6DA";
+        ctx.fillRect(-r * 0.22, -r * 0.14, r * 0.44, r * 0.28);
+        ctx.restore();
+      }
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+      ctx.fillStyle = "#6E7079";
+      ctx.fill();
+      outline();
+      const grd = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r * 0.8);
+      grd.addColorStop(0, "rgba(255,255,255,0.25)");
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+      ctx.fill();
+      face(ctx, "furioso", r * 0.8, t, phase);
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------- placa de texto (nombre del agente, pistas) ---------- */
+export function drawPlaque(ctx: CanvasRenderingContext2D, x: number, y: number, title: string, sub?: string, accent: string = COLORS.lima) {
+  ctx.save();
+  ctx.font = '900 17px "Archivo Black", Archivo, Arial';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const tw = ctx.measureText(title).width;
+  ctx.font = '600 13px Inter, Arial';
+  const sw = sub ? ctx.measureText(sub).width : 0;
+  const w = Math.max(tw, sw) + 44, h = sub ? 54 : 36;
+  const cut = 10;
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2 + cut, y - h / 2);
+  ctx.lineTo(x + w / 2, y - h / 2);
+  ctx.lineTo(x + w / 2 - cut, y + h / 2);
+  ctx.lineTo(x - w / 2, y + h / 2);
+  ctx.closePath();
+  ctx.fillStyle = INK;
+  ctx.fill();
+  ctx.fillStyle = accent;
+  ctx.fillRect(x - w / 2 + cut + 2, y - h / 2, w * 0.35, 3);
+  ctx.fillStyle = "#fff";
+  ctx.font = '900 17px "Archivo Black", Archivo, Arial';
+  ctx.fillText(title, x, y - (sub ? 9 : 0));
+  if (sub) {
+    ctx.fillStyle = accent;
+    ctx.font = '600 13px Inter, Arial';
+    ctx.fillText(sub, x, y + 13);
+  }
+  // flechita hacia abajo
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y + h / 2);
+  ctx.lineTo(x + 8, y + h / 2);
+  ctx.lineTo(x, y + h / 2 + 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}

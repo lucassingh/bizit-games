@@ -47,7 +47,10 @@ export type SfxName = keyof typeof SFX;
 
 export const MUSIC = {
   compania: "/audio/music/compania-loop.mp3",
+  deploy: "/audio/music/deploy-loop.mp3",
 } as const;
+/** Volumen base de la música por juego (Deploy más bajo: los golpes y la goma mandan). */
+export const MUSIC_LEVEL: Record<string, number> = { compania: 0.32, deploy: 0.17 };
 
 interface AudioState {
   enabled: boolean;
@@ -142,13 +145,14 @@ export function sfx(name: SfxName, opts: { volume?: number; rate?: number } = {}
 /* ---------- música ---------- */
 let musicSrc: AudioBufferSourceNode | null = null;
 let musicUrl = "";
-const MUSIC_VOL = 0.32;
+let MUSIC_VOL = 0.32;
 
 export const music = {
   /** Arranca (o reanuda) el loop con fundido de entrada. */
-  play(url: string, fadeIn = 1.2) {
+  play(url: string, fadeIn = 1.2, level = 0.32) {
     if (typeof window === "undefined") return;
     try {
+      MUSIC_VOL = level;
       unlock();
       const c = context();
       master();
@@ -191,5 +195,87 @@ export const music = {
         src.stop();
       } catch {}
     }, fade * 1000 + 50);
+  },
+};
+
+/* ---------- goma de la gomera (sintetizada: estirar sube el tono, soltar chasquea) ---------- */
+let rub: { osc: OscillatorNode; osc2: OscillatorNode; lfo: OscillatorNode; lfoG: GainNode; g: GainNode; f: BiquadFilterNode } | null = null;
+export const rubber = {
+  start() {
+    if (typeof window === "undefined" || !useAudio.getState().enabled) return;
+    try {
+      rubber.release(0);
+      const c = context();
+      const out = master();
+      const osc = c.createOscillator();
+      osc.type = "sawtooth";
+      const osc2 = c.createOscillator();
+      osc2.type = "triangle";
+      osc2.detune.value = 9;
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 22;
+      const lfoG = c.createGain();
+      lfoG.gain.value = 0.35;
+      const f = c.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = 900;
+      f.Q.value = 6;
+      const g = c.createGain();
+      g.gain.value = 0;
+      lfo.connect(lfoG).connect(g.gain);
+      osc.connect(f);
+      osc2.connect(f);
+      f.connect(g).connect(out);
+      osc.start();
+      osc2.start();
+      lfo.start();
+      rub = { osc, osc2, lfo, lfoG, g, f };
+    } catch {}
+  },
+  /** k = 0..1 cuánto está estirada. */
+  set(k: number) {
+    if (!rub || !ctx) return;
+    const now = ctx.currentTime;
+    const fr = 90 + k * 260;
+    rub.osc.frequency.setTargetAtTime(fr, now, 0.03);
+    rub.osc2.frequency.setTargetAtTime(fr * 1.5, now, 0.03);
+    rub.f.frequency.setTargetAtTime(500 + k * 1600, now, 0.03);
+    rub.lfo.frequency.setTargetAtTime(14 + k * 26, now, 0.05);
+    rub.g.gain.setTargetAtTime(0.025 + k * 0.08, now, 0.04);
+  },
+  release(snap = 1) {
+    if (!rub || !ctx) return;
+    const r = rub;
+    rub = null;
+    const now = ctx.currentTime;
+    r.g.gain.cancelScheduledValues(now);
+    r.g.gain.setTargetAtTime(0, now, 0.02);
+    window.setTimeout(() => {
+      try {
+        r.osc.stop();
+        r.osc2.stop();
+        r.lfo.stop();
+      } catch {}
+    }, 150);
+    if (snap > 0) {
+      // chasquido: ráfaga de ruido filtrada
+      try {
+        const c = ctx;
+        const len = Math.floor(c.sampleRate * 0.12);
+        const buf = c.createBuffer(1, len, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        const f = c.createBiquadFilter();
+        f.type = "bandpass";
+        f.frequency.value = 700 + snap * 600;
+        f.Q.value = 1.2;
+        const g = c.createGain();
+        g.gain.value = 0.5 + snap * 0.4;
+        src.connect(f).connect(g).connect(master());
+        src.start();
+      } catch {}
+    }
   },
 };

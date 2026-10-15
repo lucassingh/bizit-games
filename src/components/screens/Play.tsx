@@ -15,7 +15,7 @@ import { syncNow } from "@/lib/leads/sync";
 import type { KioskConfig } from "@/lib/config";
 import { devGame } from "@/lib/dev";
 import { useDev } from "@/lib/devtools";
-import { MUSIC, music, sfx } from "@/lib/audio";
+import { MUSIC, MUSIC_LEVEL, music, sfx } from "@/lib/audio";
 import type { CreateGame, GameHooks, GameInstance, GameOutcome } from "@/games/types";
 import p from "./play.module.css";
 
@@ -112,7 +112,7 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
   useEffect(() => {
     const url = (MUSIC as Partial<Record<GameId, string>>)[game];
     if (!url || loading || count !== null) return;
-    music.play(url);
+    music.play(url, 1.2, MUSIC_LEVEL[game] ?? 0.32);
   }, [game, loading, count]);
   useEffect(() => () => music.stop(0.8), []);
 

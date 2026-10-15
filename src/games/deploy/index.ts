@@ -6,6 +6,8 @@ import { drawBGen, makeBlinker } from "../shared/bgenFace";
 import { COLORS } from "@/lib/brand";
 import { Cable, Coins, Crown, Radio, type IconNode } from "lucide";
 import { drawIcon } from "../shared/icons";
+import { music, rubber, sfx } from "@/lib/audio";
+import { drawBackground, drawBands, drawEnemySprite, drawPlaque, drawSlingshot, type EnemyKind } from "./art";
 
 /**
  * Juego 2 · Deploy BGen — "Derribá el Caos" (docs/04).
@@ -31,11 +33,12 @@ interface Meta {
 }
 
 const WORLD_W = 1600;
-const WORLD_H = 900;
-const GROUND = 820;
-const SLING = { x: 250, y: 640 };
-const MAX_PULL = 170;
-const POWER = 0.12;
+// mundo más bajo (menos cielo vacío): en la TV todo se ve un 28 % más grande
+const WORLD_H = 700;
+const GROUND = 620;
+const SLING = { x: 250, y: GROUND - 180 };
+const MAX_PULL = 185;
+const POWER = 0.125;
 const G_STEP = 0.001 * (1000 / 60) ** 2; // aceleración por paso (gravedad de Matter)
 
 const AGENTS: Record<Agent, { name: string; color: string; icon?: IconNode; ability: string }> = {
@@ -52,18 +55,11 @@ const LEVEL_SHOTS: Agent[][] = [
   ["orquestador", "orquestador", "voz"],
 ];
 
-const ENEMY_COLORS: Record<string, { fill: string; label: string }> = {
-  mail: { fill: "#D9CBB0", label: "MAIL" },
-  factura: { fill: "#E3C85A", label: "FACT." },
-  excel: { fill: "#5E7F5A", label: "XLS" },
-  fantasma: { fill: "#F3F1EE", label: "LEAD" },
-  reporte: { fill: "#C8C2B8", label: "REP." },
-  boss: { fill: "#8d8d93", label: "CAOS" },
-};
 
 const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const { canvas, ctx, state, dispose } = fitCanvas(host);
-  const engine = Engine.create({ enableSleeping: false });
+  // más iteraciones y "sueño": las torres quedan quietas hasta que algo las golpea
+  const engine = Engine.create({ enableSleeping: true, positionIterations: 10, velocityIterations: 8, constraintIterations: 4 });
   engine.gravity.y = 1;
   const world = engine.world;
   const scorer = new Scorer(hooks);
@@ -78,6 +74,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let current: Matter.Body | null = null;
   let aiming: { x: number; y: number } | null = null;
   let abilityUsed = false;
+  let lastHitSfx = -1;
   let settleTimer = 0;
   let levelStartedAt = 0;
   let killed = 0;
@@ -86,7 +83,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let ended = false;
   let cable: { from: Matter.Vector; to: Matter.Vector; life: number } | null = null;
   let wave: { x: number; y: number; life: number } | null = null;
-  const particles: { x: number; y: number; vx: number; vy: number; life: number; c: string; r: number }[] = [];
+  const particles: { x: number; y: number; vx: number; vy: number; life: number; c: string; r: number; img?: HTMLImageElement; rot?: number; vr?: number }[] = [];
+
+  // sprites de bloques (Kenney Physics Assets, CC0): intacto y rajado por material
+  const SPR_NAMES = ["wood-square", "wood-long", "glass-tall", "metal-tall", "explosive", "debris-wood-1", "debris-wood-2", "debris-wood-3", "debris-glass-1", "debris-glass-2", "debris-glass-3"];
+  const SPR: Record<string, HTMLImageElement> = {};
+  for (const n of SPR_NAMES) {
+    for (const suf of n.startsWith("debris") ? [""] : ["", "-x"]) {
+      const im = new Image();
+      im.src = `/sprites/physics/${n}${suf}.png`;
+      SPR[n + suf] = im;
+    }
+  }
+  const BLOCK_SPRITE: Partial<Record<Kind, string>> = { box: "wood-square", plank: "wood-long", binder: "glass-tall", cpu: "metal-tall", clock: "explosive" };
+  const debrisFor = (kind: Kind) => (kind === "binder" ? ["debris-glass-1", "debris-glass-2", "debris-glass-3"] : ["debris-wood-1", "debris-wood-2", "debris-wood-3"]);
 
   const say = (e: Expr, text?: string) => {
     expr = e;
@@ -102,13 +112,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   const meta = (b: Matter.Body) => (b.plugin as { meta?: Meta }).meta;
 
   function addBlock(kind: Kind, x: number, y: number, w: number, h: number, hp: number, density = 0.0012) {
-    const b = Bodies.rectangle(x, y, w, h, { friction: 0.9, frictionStatic: 1.2, restitution: 0.02, density, chamfer: { radius: 4 } });
+    const b = Bodies.rectangle(x, y, w, h, { friction: 0.9, frictionStatic: 1.4, restitution: 0.01, density, slop: 0.02, sleepThreshold: 30 });
     b.plugin = { meta: { kind, hp, maxHp: hp, enemy: false, w, h } satisfies Meta };
     Composite.add(world, b);
     return b;
   }
   function addRound(kind: Kind, x: number, y: number, r: number, hp: number, enemy: boolean, density = 0.001) {
-    const b = Bodies.circle(x, y, r, { friction: 0.8, restitution: 0.1, density, frictionAir: 0.004 });
+    const b = Bodies.circle(x, y, r, { friction: 0.8, restitution: 0.1, density, frictionAir: 0.004, slop: 0.02, sleepThreshold: 30 });
     b.plugin = { meta: { kind, hp, maxHp: hp, enemy, r, shield: kind === "boss" } satisfies Meta };
     Composite.add(world, b);
     return b;
@@ -181,7 +191,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       return;
     }
     const agent = shots[shotIndex];
-    const b = Bodies.circle(SLING.x, SLING.y, 34, { density: 0.004, restitution: 0.25, friction: 0.6, frictionAir: 0.005 });
+    hooks.lives(shots.length - shotIndex);
+    const b = Bodies.circle(SLING.x, SLING.y, 34, { density: 0.004, restitution: 0.25, friction: 0.6, frictionAir: 0.0012 });
     b.plugin = { agent, launched: false };
     // en la gomera no choca con nada (no empuja al agente que acaba de salir)
     b.isSensor = true;
@@ -214,15 +225,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           } else dmg *= 0.25;
         }
         m.hp -= dmg;
+        if (dmg > 0.6 && t - lastHitSfx > 0.06) {
+          lastHitSfx = t;
+          sfx(m.kind === "binder" || m.kind === "clock" ? "g.near" : "g.hit", { volume: Math.min(0.9, 0.25 + dmg * 0.15), rate: 0.85 + Math.random() * 0.3 });
+        }
         if (m.hp <= 0) destroy(self);
       }
     }
   });
 
-  function burst(x: number, y: number, n: number, colors: string[]) {
+  function burst(x: number, y: number, n: number, colors: string[], debris?: string[]) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 7;
-      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3, life: 1, c: colors[i % colors.length], r: 3 + Math.random() * 5 });
+      const img = debris && i % 2 === 0 ? SPR[debris[i % debris.length]] : undefined;
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3, life: 1, c: colors[i % colors.length], r: img ? 14 + Math.random() * 10 : 3 + Math.random() * 5, img, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4 });
     }
   }
 
@@ -234,6 +250,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const { x, y } = b.position;
     if (m.enemy) {
       killed++;
+      sfx(m.kind === "boss" ? "g.beam" : "g.bell", { volume: m.kind === "boss" ? 1 : 0.6, rate: m.kind === "boss" ? 1 : 1.3 + Math.random() * 0.3 });
       const pts = m.kind === "boss" ? 1000 : 100;
       const g = scorer.hit(pts, t);
       popups.add(x, y - 40, `+${g}`, m.kind === "boss" ? COLORS.naranja : COLORS.violeta);
@@ -247,13 +264,19 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           scorer.hit(bonus, t, false);
           popups.add(WORLD_W / 2, 300, `+${bonus} por tiempo`, COLORS.naranja);
         }
-        finishGame(1.6);
+        sfx("g.win");
+        window.setTimeout(() => hooks.stage("outro", { title: "¡Derribaste el Caos!", text: `Eliminaste ${killed} de ${totalEnemies} Problemones y tu equipo de agentes quedó desplegado. Esto es lo que BGenAI puede hacer en tu empresa.` }), 1200);
+        window.setTimeout(() => hooks.stage(null), 11800);
+        finishGame(12);
       }
     } else {
       const pts = m.kind === "cpu" ? 50 : m.kind === "box" || m.kind === "plank" ? 25 : 10;
       scorer.hit(pts, t, false);
-      burst(x, y, 10, m.kind === "binder" ? ["#7FB7C9", "#fff"] : ["#C9A77A", "#E6D3B3"]);
-      if (m.kind === "clock") explode(x, y, 220, 0.09);
+      burst(x, y, 12, m.kind === "binder" ? ["#7FB7C9", "#fff"] : ["#C9A77A", "#E6D3B3"], debrisFor(m.kind));
+      if (m.kind === "clock") {
+        sfx("g.fail", { volume: 0.8, rate: 1.6 });
+        explode(x, y, 220, 0.09);
+      }
     }
   }
 
@@ -287,6 +310,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   function ability() {
     const p = projectiles[projectiles.length - 1];
     if (!p || abilityUsed || p.speed < 1.5) return;
+    sfx("g.power", { volume: 0.7 });
     const agent = (p.plugin as { agent: Agent }).agent;
     abilityUsed = true;
     if (agent === "bgen") {
@@ -355,6 +379,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (!current || w.x > WORLD_W * 0.55) return false;
       aiming = { x: SLING.x, y: SLING.y };
       say("concentrado");
+      rubber.start();
+      music.duck(0.45, 0.3);
       return true;
     },
     onDragMove(x, y) {
@@ -364,15 +390,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       if (Vector.magnitude(d) > MAX_PULL) d = Vector.mult(Vector.normalise(d), MAX_PULL);
       aiming = Vector.add(SLING, d);
       Body.setPosition(current, aiming);
+      rubber.set(Vector.magnitude(d) / MAX_PULL);
     },
     onDragEnd() {
       if (!aiming || !current) return;
       const pull = Vector.sub(SLING, aiming);
       aiming = null;
+      music.duck(1, 1.5);
       if (Vector.magnitude(pull) < 25) {
         Body.setPosition(current, SLING);
+        rubber.release(0);
         return;
       }
+      rubber.release(Vector.magnitude(pull) / MAX_PULL);
+      sfx("g.jump", { volume: 0.5, rate: 0.9 });
       Body.setStatic(current, false);
       current.isSensor = false;
       Body.setVelocity(current, Vector.mult(pull, POWER));
@@ -392,6 +423,16 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   });
 
   /* ---------- flujo de niveles ---------- */
+  function gameOver() {
+    if (ended) return;
+    ended = true;
+    paused = true;
+    clock.paused = true;
+    say("mareado", "Me quedé sin agentes… ¡y el Caos sigue ahí!");
+    const pct = totalEnemies ? killed / totalEnemies : 0;
+    hooks.gameOver({ score: scorer.score, metricValue: `${killed}/${totalEnemies}`, metricPct: pct });
+  }
+
   function nextLevel(reason: "clear" | "time" | "shots") {
     if (level >= 2) {
       finishGame(1.2);
@@ -405,6 +446,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       }
     }
     level++;
+    sfx("g.phase");
     clock.setPhase(level as PhaseIndex);
     buildLevel(level);
   }
@@ -454,21 +496,22 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         settleTimer += dt;
         if (settleTimer > 0.8) nextLevel("clear");
       } else if (!current && shotIndex >= LEVEL_SHOTS[level].length) {
-        // sin tiros: esperar a que se acomode todo
+        // sin agentes para lanzar y todavía quedan Problemones: se acabaron las vidas
         const moving = projectiles.some((p) => p.speed > 0.6) || minis.some((p) => p.speed > 0.6);
         settleTimer += moving ? 0 : dt;
-        if (settleTimer > 1.4) nextLevel("shots");
+        if (settleTimer > 1.6) gameOver();
       } else settleTimer = 0;
-      if (clock.elapsed >= LEVEL_END[level]) nextLevel("time");
     }
     if (clock.done && !ended) finishGame(0.4);
     void levelStartedAt;
+    void LEVEL_END;
 
     // partículas
     for (const p of particles) {
       p.x += p.vx;
       p.y += p.vy;
       p.vy += 0.35;
+      p.rot = (p.rot || 0) + (p.vr || 0);
       p.life -= dt * 1.2;
     }
     for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
@@ -484,164 +527,54 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
   function drawEnemy(b: Matter.Body, m: Meta) {
     const r = m.r!;
-    const c = ENEMY_COLORS[m.kind];
     ctx.save();
     ctx.translate(b.position.x, b.position.y);
-    if (m.kind === "boss") {
-      // torbellino de papeles
-      for (let k = 0; k < 14; k++) {
-        const a = t * 3 + k;
-        ctx.fillStyle = k % 2 ? "#d9cbb0" : "#bdb3a0";
-        ctx.save();
-        ctx.rotate(a);
-        ctx.fillRect(r * 0.9, -4, 16, 10);
-        ctx.restore();
-      }
-      if (m.shield) {
-        ctx.beginPath();
-        ctx.arc(0, 0, r + 14 + Math.sin(t * 6) * 2, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(10,182,188,.55)";
-        ctx.lineWidth = 6;
-        ctx.setLineDash([10, 8]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
+    if (m.kind === "boss" && m.shield) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 16 + Math.sin(t * 6) * 2, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(10,182,188,.6)";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([10, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
     ctx.rotate(b.angle);
-    ctx.beginPath();
-    if (m.kind === "fantasma") {
-      ctx.moveTo(-r, 4);
-      ctx.arc(0, 0, r, Math.PI, 0);
-      ctx.lineTo(r, r);
-      for (let k = 0; k < 4; k++) ctx.lineTo(r - (k + 0.5) * (r / 2), r - (k % 2 ? 0 : 8));
-      ctx.closePath();
-    } else if (m.kind === "mail" || m.kind === "factura" || m.kind === "excel" || m.kind === "reporte") {
-      ctx.roundRect(-r, -r * 0.8, r * 2, r * 1.6, 8);
-    } else ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = c.fill;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(33,37,41,.55)";
-    ctx.stroke();
-    if (m.kind === "mail") {
-      ctx.beginPath();
-      ctx.moveTo(-r, -r * 0.8);
-      ctx.lineTo(0, 0);
-      ctx.lineTo(r, -r * 0.8);
-      ctx.stroke();
-    }
-    if (m.kind === "excel") {
-      ctx.strokeStyle = "rgba(255,255,255,.4)";
-      ctx.lineWidth = 2;
-      for (let k = -1; k <= 1; k++) {
-        ctx.beginPath();
-        ctx.moveTo(k * r * 0.5, -r * 0.8);
-        ctx.lineTo(k * r * 0.5, r * 0.8);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-r, k * r * 0.4);
-        ctx.lineTo(r, k * r * 0.4);
-        ctx.stroke();
-      }
-    }
-    // cara enojada
-    const er = m.kind === "boss" ? 9 : 5;
-    const ey = m.kind === "mail" ? 6 : -4;
-    ctx.fillStyle = "#fff";
-    for (const sx of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(sx * r * 0.33, ey, er + 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COLORS.carbon;
-      ctx.beginPath();
-      ctx.arc(sx * r * 0.33 + Math.sin(t * 2) * 1.5, ey + 1, er * 0.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-    }
-    ctx.strokeStyle = COLORS.carbon;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.55, ey - er - 5);
-    ctx.lineTo(-r * 0.12, ey - er);
-    ctx.moveTo(r * 0.55, ey - er - 5);
-    ctx.lineTo(r * 0.12, ey - er);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(33,37,41,.7)";
-    ctx.font = `800 ${m.kind === "boss" ? 16 : 10}px Inter, Arial`;
-    ctx.textAlign = "center";
-    ctx.fillText(c.label, 0, r * (m.kind === "boss" ? 0.55 : 0.6));
+    drawEnemySprite(ctx, m.kind as EnemyKind, r, t, b.id * 0.37);
     ctx.restore();
     // vida
     if (m.hp < m.maxHp && m.hp > 0) {
-      const w = r * 1.6;
-      ctx.fillStyle = "#E6E1DC";
-      ctx.fillRect(b.position.x - w / 2, b.position.y - r - 18, w, 6);
+      const w = r * 1.8;
+      ctx.fillStyle = COLORS.carbon;
+      ctx.fillRect(b.position.x - w / 2 - 1, b.position.y - r - 24, w + 2, 8);
       ctx.fillStyle = m.kind === "boss" ? COLORS.rojo : COLORS.naranja;
-      ctx.fillRect(b.position.x - w / 2, b.position.y - r - 18, (w * m.hp) / m.maxHp, 6);
+      ctx.fillRect(b.position.x - w / 2, b.position.y - r - 23, (w * m.hp) / m.maxHp, 6);
     }
   }
 
   function drawBlock(b: Matter.Body, m: Meta) {
+    const dmg = 1 - m.hp / m.maxHp;
+    const name = BLOCK_SPRITE[m.kind];
+    const img = name ? SPR[name + (dmg > 0.45 ? "-x" : "")] : undefined;
     ctx.save();
     ctx.translate(b.position.x, b.position.y);
     ctx.rotate(b.angle);
-    const dmg = 1 - Math.max(0, m.hp) / m.maxHp;
     if (m.kind === "clock") {
-      ctx.beginPath();
-      ctx.arc(0, 0, m.r!, 0, Math.PI * 2);
-      ctx.fillStyle = "#fff";
-      ctx.fill();
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = COLORS.rojo;
-      ctx.stroke();
-      ctx.strokeStyle = COLORS.carbon;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, -m.r! * 0.6);
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(t * 4) * m.r! * 0.5, Math.sin(t * 4) * m.r! * 0.5);
-      ctx.stroke();
+      const d = m.r! * 2.1;
+      if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -d / 2, -d / 2, d, d);
+      else {
+        ctx.beginPath();
+        ctx.arc(0, 0, m.r!, 0, Math.PI * 2);
+        ctx.fillStyle = "#E3B23C";
+        ctx.fill();
+      }
       ctx.restore();
       return;
     }
     const w = m.w!, h = m.h!;
-    const fills: Partial<Record<Kind, string>> = { box: "#C9A77A", binder: "#7FB7C9", plank: "#D9CBB0", cpu: "#D6CFBF" };
-    ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, 5);
-    ctx.fillStyle = fills[m.kind] || "#ccc";
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "rgba(33,37,41,.35)";
-    ctx.stroke();
-    if (m.kind === "box") {
-      ctx.fillStyle = "rgba(255,255,255,.35)";
-      ctx.fillRect(-w / 2, -6, w, 12);
-      ctx.fillStyle = "rgba(33,37,41,.25)";
-      ctx.fillRect(-14, -h / 2 + 10, 28, 12);
-    } else if (m.kind === "binder") {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(-w / 2 + 6, -h / 2 + 14, w - 12, 26);
-      ctx.beginPath();
-      ctx.arc(0, h / 2 - 18, 6, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(33,37,41,.4)";
-      ctx.stroke();
-    } else if (m.kind === "cpu") {
-      ctx.fillStyle = "rgba(33,37,41,.25)";
-      for (let k = 0; k < 3; k++) ctx.fillRect(-w / 2 + 10, -h / 2 + 12 + k * 12, w - 20, 5);
-      ctx.fillStyle = COLORS.lima;
-      ctx.fillRect(w / 2 - 16, h / 2 - 16, 6, 6);
-    }
-    if (dmg > 0.3) {
-      ctx.strokeStyle = "rgba(33,37,41,.45)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.3, -h * 0.3);
-      ctx.lineTo(0, 0);
-      ctx.lineTo(w * 0.2, -h * 0.1);
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-w * 0.1, h * 0.35);
-      ctx.stroke();
+    if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    else {
+      ctx.fillStyle = m.kind === "binder" ? "#7FB7C9" : m.kind === "cpu" ? "#9AA3AD" : "#C9A77A";
+      ctx.fillRect(-w / 2, -h / 2, w, h);
     }
     ctx.restore();
   }
@@ -679,44 +612,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     bg.height = Math.round(state.h * state.dpr);
     const g = bg.getContext("2d")!;
     g.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-    // cielo claro a toda la pantalla
-    const sky = g.createLinearGradient(0, 0, 0, state.h);
-    sky.addColorStop(0, "#FFF6EE");
-    sky.addColorStop(1, "#EEF5F6");
-    g.fillStyle = sky;
+    // cielo a toda la pantalla y patio de la compañía en coordenadas del mundo
+    g.fillStyle = "#BFE0F3";
     g.fillRect(0, 0, state.w, state.h);
     g.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * v.ox, state.dpr * v.oy);
-
-    // skyline de la compañía (mundo compartido)
-    const bld = [
-      [60, 260, 140],
-      [230, 180, 90],
-      [340, 330, 120],
-      [480, 220, 100],
-      [600, 380, 150],
-      [770, 240, 110],
-      [900, 300, 130],
-      [1500, 340, 140],
-      [1660, 220, 120],
-    ];
-    for (const [x, h, w] of bld) {
-      g.fillStyle = "#E9E2DA";
-      g.fillRect(x - 60, GROUND - h, w, h);
-      g.fillStyle = "rgba(236,114,3,.28)";
-      for (let yy = GROUND - h + 18; yy < GROUND - 20; yy += 26) for (let xx = x - 48; xx < x - 60 + w - 14; xx += 22) g.fillRect(xx, yy, 9, 12);
-    }
-    // HQ Bizit al fondo
-    g.fillStyle = "#D9D2CA";
-    g.fillRect(1010 - 60, GROUND - 520, 130, 520);
-    g.fillStyle = COLORS.naranja;
-    g.fillRect(1010 - 60, GROUND - 520, 130, 10);
-
-    // piso
-    g.fillStyle = "#E6E1DC";
-    g.fillRect(-WORLD_W, GROUND, WORLD_W * 3, 200);
-    g.fillStyle = "#D7EBCB";
-    g.fillRect(-WORLD_W, GROUND, WORLD_W * 3, 10);
-
+    drawBackground(g, WORLD_W, WORLD_H, GROUND);
     return bg;
   }
 
@@ -728,34 +628,13 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     ctx.drawImage(background(v), 0, 0);
     ctx.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * v.ox, state.dpr * v.oy);
 
-    // gomera "Deploy"
-    ctx.strokeStyle = COLORS.carbon;
-    ctx.lineWidth = 16;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(SLING.x, GROUND);
-    ctx.lineTo(SLING.x, SLING.y + 60);
-    ctx.lineTo(SLING.x - 34, SLING.y - 10);
-    ctx.moveTo(SLING.x, SLING.y + 60);
-    ctx.lineTo(SLING.x + 34, SLING.y - 10);
-    ctx.stroke();
-    ctx.fillStyle = COLORS.naranja;
-    ctx.fillRect(SLING.x - 26, SLING.y + 40, 52, 14);
-    ctx.font = '900 13px "Archivo Black", Arial';
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.fillText("DEPLOY", SLING.x, SLING.y + 52);
+    // gomera (parte de atrás; la horquilla delantera y la banda delantera van sobre el proyectil)
+    drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "back");
+    if (current) drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "back");
 
-    // bandas elásticas + trayectoria
+    // trayectoria
     if (current) {
       const p = current.position;
-      ctx.strokeStyle = COLORS.naranja;
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(SLING.x - 34, SLING.y - 10);
-      ctx.lineTo(p.x, p.y);
-      ctx.lineTo(SLING.x + 34, SLING.y - 10);
-      ctx.stroke();
       if (aiming) {
         const vel = Vector.mult(Vector.sub(SLING, aiming), POWER);
         let x = p.x, y = p.y, vx = vel.x, vy = vel.y;
@@ -817,8 +696,16 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     }
     for (const p of particles) {
       ctx.globalAlpha = Math.max(0, p.life);
-      ctx.fillStyle = p.c;
-      ctx.fillRect(p.x, p.y, p.r, p.r * 0.7);
+      if (p.img && p.img.complete && p.img.naturalWidth) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot || 0);
+        ctx.drawImage(p.img, -p.r / 2, -p.r / 2, p.r, p.r);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = p.c;
+        ctx.fillRect(p.x, p.y, p.r, p.r * 0.7);
+      }
     }
     ctx.globalAlpha = 1;
 
@@ -837,15 +724,12 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         drawIcon(ctx, ic, x + 20, y - 20, 13, COLORS.negro, 2.6);
       }
     });
+    // horquilla delantera y banda delantera (sobre el proyectil, para que la bolsa lo envuelva)
+    if (current) drawBands(ctx, SLING.x, SLING.y, current.position.x, current.position.y, "front");
+    drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "front");
     if (current && !aiming) {
       const ag = (current.plugin as { agent: Agent }).agent;
-      ctx.font = '800 18px Inter, Arial';
-      ctx.fillStyle = COLORS.carbon;
-      ctx.textAlign = "center";
-      ctx.fillText(AGENTS[ag].name.toUpperCase(), SLING.x, SLING.y - 70);
-      ctx.font = '500 15px "JetBrains Mono", monospace';
-      ctx.fillStyle = COLORS.gris;
-      ctx.fillText(AGENTS[ag].ability, SLING.x, SLING.y - 48);
+      drawPlaque(ctx, SLING.x, SLING.y - 120, AGENTS[ag].name, ag === "bgen" ? "arrastrá hacia atrás y soltá" : `tocá ${AGENTS[ag].ability}`, ag === "bgen" ? COLORS.lima : AGENTS[ag].color);
     }
     popups.draw(ctx, 1 / 60, 1.2);
   }
