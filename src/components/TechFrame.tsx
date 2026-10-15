@@ -11,7 +11,20 @@ import s from "./techframe.module.css";
  *
  * El contenido debe dejar un margen de `INSET` unidades (var(--u)) respecto del borde.
  */
-export const INSET = 18;
+/** Bandas de afuera hacia adentro (ancho en unidades a escala 1, color). Proporciones de la referencia: 20/20/20/10/10. */
+const BANDS: [number, string][] = [
+  [8, "#d8d0c7"],
+  [8, "#ffffff"],
+  [8, "#c4bab0"],
+  [4, "#ffffff"],
+  [2, "#212529"],
+];
+const BAND_TOTAL = BANDS.reduce((a, [w]) => a + w, 0);
+
+/** Margen que debe dejar el contenido respecto del borde, en unidades (var(--u)). */
+export function frameInset(scale = 1) {
+  return BAND_TOTAL * scale + 2;
+}
 
 type Props = {
   /** Tamaño del bisel exterior, en unidades. */
@@ -22,16 +35,9 @@ type Props = {
   notch?: number;
   /** Pestaña inferior decorativa. */
   foot?: boolean;
+  /** Escala de las bandas (1 en el escenario, menor en el HUD). */
+  scale?: number;
 };
-
-const LAYERS: [number, string][] = [
-  [0, "#cdc4ba"],
-  [3.5, "#ffffff"],
-  [7, "#b9afa4"],
-  [10.5, "#ffffff"],
-  [13, "#212529"],
-  [15, "url(#tf-fill)"],
-];
 
 /**
  * Octógono con bisel a 45° desplazado `i` px hacia adentro de forma uniforme:
@@ -54,7 +60,7 @@ function octagon(w: number, h: number, i: number, cut: number) {
     .join(" ");
 }
 
-export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true }: Props) {
+export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true, scale = 1 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0, u: 1 });
 
@@ -89,9 +95,16 @@ export default function TechFrame({ cut = 24, title, notch = 0.34, foot = true }
               <stop offset="1" stopColor="#f5f1ec" />
             </radialGradient>
           </defs>
-          {LAYERS.map(([i, fill]) => (
-            <polygon key={i} points={octagon(w, h, i * u, c)} fill={fill} />
-          ))}
+          {(() => {
+            let i = 0;
+            const out = BANDS.map(([bw, fill]) => {
+              const poly = <polygon key={fill + i} points={octagon(w, h, i * u, c)} fill={fill} />;
+              i += bw * scale;
+              return poly;
+            });
+            out.push(<polygon key="fill" points={octagon(w, h, i * u, c)} fill="url(#tf-fill)" />);
+            return out;
+          })()}
           {notch > 0 && (
             <g>
               <polygon points={`${nx},0 ${nx + nw},0 ${nx + nw - slope},${nh} ${nx + slope},${nh}`} fill="#F75D00" />

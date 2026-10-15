@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   gap: calc(10 * var(--u));
-  padding: calc(42 * var(--u)) calc(26 * var(--u)) calc(28 * var(--u));
+  padding: calc(44 * var(--u)) calc(28 * var(--u)) calc(30 * var(--u));
   min-height: 0;
   overflow: hidden;
 }
@@ -31,7 +31,7 @@
   grid-template-columns: auto minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
   align-items: stretch;
   gap: calc(12 * var(--u));
-  padding: calc(32 * var(--u)) calc(34 * var(--u)) calc(22 * var(--u));
+  padding: calc(34 * var(--u)) calc(36 * var(--u)) calc(24 * var(--u));
 }
 
 .row2 {

@@ -32,9 +32,10 @@
 
 /* el canvas vive adentro del marco: mismo bisel (30u) menos el margen del marco */
 .host {
-  --cut: calc(14 * var(--u));
+  /* bisel exterior 34u menos el margen (32u) ⇒ el bisel interno es chico */
+  --cut: calc(12 * var(--u));
   position: absolute;
-  inset: var(--inset, calc(18 * var(--u)));
+  inset: var(--inset, calc(32 * var(--u)));
   z-index: 1;
   clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
 }
