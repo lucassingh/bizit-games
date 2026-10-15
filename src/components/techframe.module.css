@@ -1,8 +1,8 @@
 .wrap {
+  /* sin z-index propio: la capa del contorno (.overlay) debe poder quedar por encima del contenido */
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
 }
 
 .svg {
@@ -10,6 +10,11 @@
   position: absolute;
   inset: 0;
   overflow: visible;
+}
+
+.overlay {
+  z-index: 2;
+  pointer-events: none;
 }
 
 .title {

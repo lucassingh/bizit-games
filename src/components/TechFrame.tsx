@@ -20,9 +20,14 @@ export const R_OUT = 10.4;
 export const R_IN = 5.8;
 export const ORANGE = "#EB5F14";
 
-/** Margen que debe dejar el contenido respecto del borde exterior, en unidades. */
+/**
+ * Margen que debe dejar el contenido respecto del borde exterior, en unidades.
+ * El contenido entra debajo del contorno interior (que se dibuja por encima en
+ * una capa aparte), así nunca queda una línea blanca entre el canvas y el marco
+ * por redondeos de subpíxel.
+ */
 export function frameInset() {
-  return BAND + 1.5;
+  return BAND + 1.0;
 }
 /** Radio que debe usar el contenido recortado (coincide con el contorno interior). */
 export function innerRadius() {
@@ -72,6 +77,12 @@ export default function TechFrame({ fill = "#ffffff", tab = 0.5 }: Props) {
           <polygon points={`${botX},${h - inset} ${botX + slant},${h - inset - b} ${botX + len + slant},${h - inset - b} ${botX + len},${h - inset}`} fill={ORANGE} />
           {/* interior con contorno fino */}
           <rect x={b + sw} y={b + sw} width={w - 2 * (b + sw)} height={h - 2 * (b + sw)} rx={ri} fill={fill} stroke={ORANGE} strokeWidth={sw} />
+        </svg>
+      )}
+      {w > 0 && (
+        /* el mismo contorno, por encima del contenido: tapa el borde del canvas */
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={`${s.svg} ${s.overlay}`}>
+          <rect x={b + sw} y={b + sw} width={w - 2 * (b + sw)} height={h - 2 * (b + sw)} rx={ri} fill="none" stroke={ORANGE} strokeWidth={sw} />
         </svg>
       )}
     </div>
