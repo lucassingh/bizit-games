@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Flame, Network, Users, Zap } from "lucide-react";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
+import TechFrame from "../TechFrame";
 import { GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud } from "@/lib/store";
 import h from "./hud.module.css";
@@ -86,6 +87,9 @@ function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac
               </span>
             )}
             <span className={h.node}>
+              <svg viewBox="0 0 40 44" className={h.hex} aria-hidden="true">
+                <polygon points="20,2 37,11.5 37,32.5 20,42 3,32.5 3,11.5" />
+              </svg>
               <Icon />
             </span>
             <span className={h.nodeName}>{p.name}</span>
@@ -119,7 +123,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
   const timeBlock = (
     <div className={`${h.plaque} ${h.timePlaque}`}>
       <span className={h.label}>Tiempo</span>
-      <TimeRing timeLeft={timeLeft} duration={duration} size={tv ? 112 : 78} />
+      <TimeRing timeLeft={timeLeft} duration={duration} size={tv ? 100 : 78} />
     </div>
   );
 
@@ -144,7 +148,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
 
   const bgenBlock = (
     <div className={h.bgen}>
-      <BGen expr={expr} size={tv ? 92 : 64} talkKey={say?.id} aura={phase >= 1} glow={false} float={false} />
+      <BGen expr={expr} size={tv ? 84 : 64} talkKey={say?.id} aura={phase >= 1} glow={false} float={false} />
       {say && tv && (
         <p key={say.id} className={`bubble bubble-left ${h.say}`}>
           {say.text}
@@ -166,10 +170,9 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
 
   if (tv) {
     return (
-      <aside className={`tech-shadow ${h.wrap}`}>
-        <div className={`tech ${h.sidebar}`}>
-          <span className="tech-line" aria-hidden="true" />
-          <span className={`panel-title ${h.title}`}>{g.name}</span>
+      <aside className={h.wrap}>
+        <TechFrame cut={22} title={g.name} notch={0.72} />
+        <div className={h.sidebar}>
           {bgenBlock}
           {scoreBlock}
           <div className={h.row2}>
@@ -183,8 +186,9 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
     );
   }
   return (
-    <aside className={`tech-shadow ${h.wrap}`}>
-      <div className={`tech ${h.bottom}`}>
+    <aside className={h.wrap}>
+      <TechFrame cut={18} notch={0.26} foot={false} />
+      <div className={h.bottom}>
         {bgenBlock}
         {scoreBlock}
         {timeBlock}

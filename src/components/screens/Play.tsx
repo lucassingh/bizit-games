@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hud, { SayOverlay } from "../hud/Hud";
+import TechFrame, { INSET } from "../TechFrame";
 import GestureIcon from "../GestureIcon";
 import { accentVars, GAMES, PHASES, type GameId } from "@/lib/games";
 import { useHud, useSession, type GameResult } from "@/lib/store";
@@ -99,11 +100,10 @@ export default function Play({ config, layout }: { config: KioskConfig; layout: 
 
   return (
     <section className={`${p.play} ${layout === "tv" ? p.tv : p.tablet}`} style={accentVars(game) as React.CSSProperties}>
-      <div className={`tech-shadow ${p.stageWrap}`}>
-      <div className={`tech ${p.stage}`}>
-        <div ref={hostRef} className={p.host} />
-        <span className="tech-brackets" aria-hidden="true" />
-        <span className="tech-line" aria-hidden="true" />
+      <div className={p.stageWrap}>
+      <div className={p.stage}>
+        <TechFrame cut={30} notch={0.3} />
+        <div ref={hostRef} className={p.host} style={{ "--inset": `calc(${INSET} * var(--u))` } as React.CSSProperties} />
         {layout === "tablet" && <SayOverlay />}
         {loading && <div className={p.loading}>Cargando {g.name}…</div>}
         {count !== null && !loading && (
