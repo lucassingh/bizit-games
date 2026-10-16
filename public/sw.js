@@ -8,7 +8,7 @@
  *
  * Para forzar una limpieza total, subí VERSION.
  */
-const VERSION = "bgc-v2";
+const VERSION = "bgc-v3";
 const PAGES = `${VERSION}-pages`;
 const STATIC = `${VERSION}-static`;
 const PRECACHE = ["/", "/config", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/brand/bgen-personaje.svg"];
