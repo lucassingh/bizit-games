@@ -222,6 +222,7 @@ let gridTex: THREE.Texture | undefined;
 let invoiceTex: THREE.Texture | undefined;
 let stampTex: THREE.Texture | undefined;
 let labelTex: THREE.Texture | undefined;
+let leadTex: THREE.Texture | undefined;
 
 /* ---------- constructores ---------- */
 function mail(): Problemon {
@@ -268,21 +269,22 @@ function fantasma(): Problemon {
     b.position.set((i - 1) * 0.6, -1.25, 0);
     g.add(b);
   }
-  // portapapeles
+  // portapapeles: delante del cuerpo y casi de frente, para que "LEAD" se lea entero
   const clip = solid(rbox(0.7, 0.9, 0.08, 0.04), M.clip, 0.08);
-  clip.position.set(0.95, -0.1, 0.55);
-  clip.rotation.set(0, -0.5, 0.15);
+  clip.position.set(1.0, -0.42, 1.05);
+  clip.rotation.set(0, -0.1, 0.16);
+  clip.scale.setScalar(1.3);
   const sheet = new THREE.Mesh(rbox(0.58, 0.72, 0.03, 0.02), M.paper);
   sheet.position.z = 0.05;
   clip.add(sheet);
-  const lines = canvasTex(64, 80, (c) => {
-    c.fillStyle = "#9aa0a6";
-    for (let i = 0; i < 5; i++) c.fillRect(8, 12 + i * 13, 48 - i * 6, 4);
+  leadTex ??= canvasTex(256, 318, (c) => {
     c.fillStyle = COLORS.rojo;
-    c.font = "bold 14px Arial";
-    c.fillText("LEAD", 8, 10);
+    c.font = "900 76px Arial";
+    c.fillText("LEAD", 14, 84);
+    c.fillStyle = "#9aa0a6";
+    for (let i = 0; i < 5; i++) c.fillRect(18, 128 + i * 36, 214 - i * 26, 14);
   });
-  const sheetFace = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.62), new THREE.MeshBasicMaterial({ map: lines, transparent: true }));
+  const sheetFace = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.62), new THREE.MeshBasicMaterial({ map: leadTex, transparent: true }));
   sheetFace.position.z = 0.07;
   clip.add(sheetFace);
   g.add(clip);

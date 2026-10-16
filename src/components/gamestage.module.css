@@ -1,0 +1,656 @@
+/*
+ * Escenario del briefing: "tráiler" del juego. Es un container de tamaño: todo se
+ * posiciona y escala en cqw/cqh/cqmin, así se ve igual en tablet y en TV.
+ */
+
+.stage {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  border-radius: calc(22 * var(--u));
+  overflow: hidden;
+  container-type: size;
+  isolation: isolate;
+  background: #dff1f2;
+  animation: stage-in 0.5s ease both;
+}
+
+/* contorno fino y las dos pestañas en el color del juego (como el marco de las pantallas de juego) */
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 calc(2 * var(--u)) rgba(33, 37, 41, 0.1);
+  pointer-events: none;
+}
+
+.stage::before,
+.art::after {
+  content: "";
+  position: absolute;
+  z-index: 9;
+  width: 36%;
+  height: calc(9 * var(--u));
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.stage::before {
+  top: 0;
+  left: 7%;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12 * var(--u)) 100%, calc(12 * var(--u)) 100%);
+}
+
+.art::after {
+  bottom: 0;
+  right: 9%;
+  clip-path: polygon(calc(12 * var(--u)) 0, calc(100% - 12 * var(--u)) 0, 100% 100%, 0 100%);
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+}
+
+.compania {
+  --hero: 30cqmin;
+}
+
+.deploy {
+  --hero: 15cqmin;
+}
+
+.central {
+  --hero: 21cqmin;
+}
+
+/* ---------- título del juego, como en una tapa ---------- */
+.title {
+  position: absolute;
+  z-index: 7;
+  top: 6%;
+  left: 5%;
+  overflow: hidden;
+  padding: 0.34em 1.1em 0.3em;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--display);
+  font-size: min(calc(24 * var(--u)), 5cqw);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  clip-path: polygon(0.6em 0, 100% 0, calc(100% - 0.6em) 100%, 0 100%);
+  rotate: -3deg;
+  animation: title-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) 0.1s both;
+}
+
+.title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: shine 3.4s ease-in-out 1.2s infinite;
+}
+
+/* ---------- globo de BGen ---------- */
+/* el globo nunca más ancho que el escenario permite (en tablet chica la columna es angosta) */
+.say {
+  position: absolute;
+  z-index: 6;
+  width: max-content;
+  max-width: min(25ch, 56cqw);
+  font-size: min(calc(15 * var(--u)), 3.6cqw);
+}
+
+.compania .say {
+  right: 3%;
+  bottom: 27%;
+}
+
+.deploy .say {
+  left: 3%;
+  top: 23%;
+}
+
+.central .say {
+  right: 4%;
+  bottom: calc(8% + var(--hero) * 0.8);
+}
+
+/* ---------- BGen ---------- */
+.hero {
+  position: absolute;
+  z-index: 4;
+  translate: -50% -50%;
+  line-height: 0;
+  animation: hero-in 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.2) 0.2s both;
+}
+
+.hero > svg {
+  filter: drop-shadow(0 1.6cqh 1.8cqh rgba(0, 0, 0, 0.28));
+}
+
+/* corre por el riel: rebote corto y rápido */
+.run {
+  left: 50%;
+  bottom: -3%;
+  translate: -50% 0;
+  animation:
+    hero-in 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.2) 0.2s both,
+    run 0.42s ease-in-out 1s infinite alternate;
+}
+
+/* cargado en la gomera */
+.loaded {
+  left: 12%;
+  top: 57%;
+  rotate: -8deg;
+}
+
+/* abajo, en la vereda de la Casa Central, disparando hacia arriba */
+.shooter {
+  left: 40%;
+  bottom: 6%;
+  translate: -50% 0;
+}
+
+/* ---------- objetos que flotan ---------- */
+.float {
+  position: absolute;
+  z-index: 3;
+  translate: -50% -50%;
+  line-height: 0;
+  animation: pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.25) var(--d) both;
+}
+
+.bob {
+  display: block;
+  animation: bob var(--t, 3s) ease-in-out calc(var(--d, 0s) + 0.6s) infinite alternate;
+}
+
+.float img,
+.float svg {
+  display: block;
+  height: calc(var(--s) * 1cqh);
+  width: auto;
+  rotate: var(--r);
+  filter: drop-shadow(0 0.8cqh 0.8cqh rgba(33, 37, 41, 0.22));
+  user-select: none;
+}
+
+/* conectores: brillan y laten (son lo que hay que juntar) */
+.plug img {
+  filter: drop-shadow(0 0 1.2cqh rgba(178, 243, 38, 0.85));
+  animation: plug 1.4s ease-in-out infinite;
+}
+
+/* ---------- cielos y suelos ---------- */
+.skyDay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #8fd3df 0%, #c3eaee 36%, #eef8f5 60%, #fff3e3 85%);
+}
+
+.groundCity {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  background: linear-gradient(#e9e3db, #ddd5ca);
+}
+
+/* la empresa (vista de costado, con los carteles de las áreas) apoyada en el horizonte */
+.cityPan {
+  position: absolute;
+  left: 50%;
+  width: 170cqw;
+  height: auto;
+  translate: -50% 0;
+  user-select: none;
+}
+
+.compania .cityPan {
+  bottom: 50%;
+}
+
+.deploy .cityPan {
+  bottom: 21%;
+  opacity: 0.95;
+}
+
+.ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22%;
+  background: linear-gradient(#7cc95a 0 14%, #5aa646 14% 19%, #8a5a33 19%, #6f4527);
+}
+
+.cloud {
+  position: absolute;
+  fill: #fff;
+  filter: drop-shadow(0 0.8cqh 0 rgba(10, 182, 188, 0.14));
+  animation: drift 14s ease-in-out infinite alternate;
+}
+
+/* ---------- La Compañía: el riel de datos hacia la empresa ---------- */
+.rail {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 50%;
+  overflow: visible;
+}
+
+.railBed {
+  fill: rgba(10, 182, 188, 0.3);
+}
+
+.railEdge {
+  fill: none;
+  stroke: rgba(10, 182, 188, 0.85);
+  stroke-width: 0.7;
+}
+
+.railLane {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: 6 5;
+  animation: lane 0.45s linear infinite;
+}
+
+/* ---------- Torre del Caos: gomera, trayectoria y torre ---------- */
+.arc {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-dasharray: 1.6 2.6;
+  filter: drop-shadow(0 0.3cqh 0.3cqh rgba(33, 37, 41, 0.3));
+  animation: arc 1.1s linear infinite;
+}
+
+.sling {
+  position: absolute;
+  z-index: 3;
+  left: 15%;
+  bottom: 21%;
+  height: 30cqh;
+  width: auto;
+  translate: -50% 0;
+  overflow: visible;
+}
+
+.slingWood {
+  fill: none;
+  stroke: #8a5a2b;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.slingBand {
+  fill: none;
+  stroke: #3b2a20;
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+}
+
+.tower {
+  position: absolute;
+  z-index: 3;
+  left: 73%;
+  bottom: 21%;
+  width: 30cqh;
+  height: 44cqh;
+  translate: -50% 0;
+  animation: tower-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.35s both;
+}
+
+.tower > img {
+  position: absolute;
+  display: block;
+  user-select: none;
+  filter: drop-shadow(0 0.5cqh 0.5cqh rgba(33, 37, 41, 0.2));
+}
+
+.crateL1,
+.crateL2 {
+  left: 0;
+  width: 13cqh;
+  height: 13cqh;
+}
+
+.crateL1 {
+  bottom: 0;
+}
+
+.crateL2 {
+  bottom: 13cqh;
+}
+
+.crateR2 {
+  right: 1cqh;
+  bottom: 0;
+  height: 26cqh;
+  width: auto;
+}
+
+.plank {
+  left: 0;
+  bottom: 26cqh;
+  width: 100%;
+  height: 5cqh;
+}
+
+.onTop {
+  position: absolute;
+  left: 50%;
+  bottom: 31cqh;
+  display: flex;
+  align-items: flex-end;
+  gap: 1cqh;
+  translate: -50% 0;
+  line-height: 0;
+}
+
+.onTop img {
+  display: block;
+  width: auto;
+  filter: drop-shadow(0 0.6cqh 0.6cqh rgba(33, 37, 41, 0.22));
+}
+
+.onTop .bob:first-child img {
+  height: 7.5cqh;
+}
+
+.onTop .bob:last-child img {
+  height: 11cqh;
+}
+
+.inside {
+  position: absolute;
+  left: 57%;
+  bottom: 0;
+  translate: -50% 0;
+  line-height: 0;
+}
+
+.inside img {
+  display: block;
+  height: 9cqh;
+  width: auto;
+}
+
+/* ---------- Lluvia de Tareas: la Casa Central de noche ---------- */
+.hqNight {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  user-select: none;
+}
+
+.nightShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(13, 16, 32, 0.1), rgba(13, 16, 32, 0.3) 70%, rgba(13, 16, 32, 0.55));
+}
+
+.fall {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  line-height: 0;
+  animation: fall var(--t) linear var(--d) infinite;
+}
+
+.fall > * {
+  display: block;
+  height: calc(var(--s) * 1cqh);
+  width: auto;
+  filter: drop-shadow(0 0.6cqh 0.6cqh rgba(0, 0, 0, 0.4));
+}
+
+/* documento dorado (VIP): vale triple */
+.fall > .gold {
+  filter: sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.08) drop-shadow(0 0 1.4cqh rgba(255, 196, 0, 0.9));
+}
+
+.delete {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--red);
+  box-shadow: inset 0 0 0 0.5cqh var(--red);
+}
+
+.delete svg {
+  width: 74%;
+  height: 74%;
+}
+
+/* la tarea que BGen está automatizando ahora */
+.target {
+  position: absolute;
+  z-index: 2;
+  left: 40%;
+  top: 30%;
+  translate: -50% -50%;
+  line-height: 0;
+  animation: hit 1.6s ease-in-out infinite;
+}
+
+.target img {
+  display: block;
+  height: 8cqh;
+  width: auto;
+}
+
+.plus {
+  position: absolute;
+  left: 105%;
+  top: -20%;
+  font-family: var(--display);
+  font-size: 3.6cqh;
+  font-weight: 400;
+  color: var(--lima);
+  text-shadow: 0 0.3cqh 0 #2c3a00;
+  animation: plus 1.6s ease-out infinite;
+}
+
+.beam {
+  position: absolute;
+  z-index: 2;
+  left: 40%;
+  top: 34%;
+  bottom: calc(6% + var(--hero) * 0.85);
+  width: 1cqw;
+  translate: -50% 0;
+  border-radius: 99px;
+  background: linear-gradient(to top, #b2f326, rgba(178, 243, 38, 0.2));
+  box-shadow: 0 0 1.6cqw rgba(178, 243, 38, 0.9);
+  animation: beam 1.6s linear infinite;
+}
+
+.street {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 13%;
+  background: linear-gradient(#4a4e58 0 14%, #2a2d34 14%);
+}
+
+.street::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  height: 0.7cqh;
+  background: repeating-linear-gradient(90deg, #e3b23c 0 4cqw, transparent 4cqw 9cqw);
+}
+
+/* ---------- animaciones ---------- */
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes title-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12cqw) rotate(-8deg);
+  }
+}
+
+@keyframes shine {
+  0%,
+  60% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(10cqh) scale(0.6);
+  }
+}
+
+@keyframes run {
+  to {
+    transform: translateY(-2.4cqh) rotate(2deg);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes bob {
+  to {
+    transform: translateY(-1.8cqh) rotate(3deg);
+  }
+}
+
+@keyframes plug {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translateX(4cqw);
+  }
+}
+
+@keyframes lane {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes arc {
+  to {
+    stroke-dashoffset: -8.4;
+  }
+}
+
+@keyframes tower-in {
+  from {
+    opacity: 0;
+    transform: translateY(8cqh);
+  }
+}
+
+@keyframes fall {
+  from {
+    transform: translate(-50%, -16cqh) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, 104cqh) rotate(var(--spin));
+  }
+}
+
+@keyframes hit {
+  0%,
+  100% {
+    transform: none;
+    filter: none;
+  }
+  10% {
+    transform: translateX(-0.8cqw) rotate(-6deg);
+    filter: brightness(1.6) drop-shadow(0 0 1.4cqh #b2f326);
+  }
+  20% {
+    transform: translateX(0.8cqw) rotate(5deg);
+  }
+  32% {
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes plus {
+  0% {
+    opacity: 0;
+    transform: translateY(1cqh) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  55% {
+    opacity: 0;
+    transform: translateY(-4cqh);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes beam {
+  0%,
+  28% {
+    opacity: 1;
+  }
+  40%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* sin animaciones: las tareas quedan quietas donde estaban (no se van por abajo) */
+@media (prefers-reduced-motion: reduce) {
+  .fall {
+    animation: none !important;
+    transform: translate(-50%, var(--y));
+  }
+}

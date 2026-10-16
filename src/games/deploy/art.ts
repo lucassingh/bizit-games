@@ -315,7 +315,7 @@ interface SpriteMeta {
 }
 const SPRITE_META: Record<string, SpriteMeta> = {
   mail: { w: 464, h: 300, ppu: 150.57, cx: 233, cy: 149 },
-  fantasma: { w: 385, h: 470, ppu: 159.28, cx: 194, cy: 235 },
+  fantasma: { w: 422, h: 470, ppu: 159.28, cx: 194, cy: 235 },
   excel: { w: 378, h: 470, ppu: 173.32, cx: 189, cy: 236 },
   caja: { w: 466, h: 468, ppu: 209.69, cx: 233, cy: 233 },
   factura: { w: 283, h: 470, ppu: 150.71, cx: 142, cy: 235 },

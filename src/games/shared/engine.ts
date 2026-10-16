@@ -1,10 +1,11 @@
-import { PHASES, phaseAt, phaseStart, type PhaseIndex } from "@/lib/games";
+import { PHASES, phaseAt, phaseBounds, phaseStart, type PhaseIndex } from "@/lib/games";
 import { nextCombo } from "@/lib/scoring";
 import type { GameHooks } from "../types";
 
 /**
  * Reloj común: 90 s divididos en Drive / Foundation / Evolution / Caos.
  * Emite el tiempo al HUD ~8 veces por segundo y avisa cada cambio de fase.
+ * `bounds`: fin de cada fase (fracción de la duración); por defecto, los comunes.
  */
 export class PhaseClock {
   elapsed = 0;
@@ -19,6 +20,7 @@ export class PhaseClock {
     private onPhase?: (p: PhaseIndex) => void,
     /** true: la fase la decide el juego (setPhase), no el reloj. */
     private manual = false,
+    private bounds: readonly number[] = phaseBounds(),
   ) {
     hooks.phase(0);
     hooks.time(duration);
@@ -30,8 +32,8 @@ export class PhaseClock {
 
   /** Fracción 0..1 dentro de la fase actual. */
   phaseProgress() {
-    const start = this.phase === 0 ? 0 : PHASES[this.phase - 1].until * this.duration;
-    const end = PHASES[this.phase].until * this.duration;
+    const start = this.phase === 0 ? 0 : this.bounds[this.phase - 1] * this.duration;
+    const end = this.bounds[this.phase] * this.duration;
     return Math.min(1, (this.elapsed - start) / (end - start));
   }
 
@@ -45,7 +47,7 @@ export class PhaseClock {
 
   /** Modo desarrollo: salta al comienzo de la fase `p`, pasando por las intermedias (sus efectos se aplican). */
   jumpTo(p: PhaseIndex) {
-    this.elapsed = phaseStart(p, this.duration);
+    this.elapsed = phaseStart(p, this.duration, this.bounds);
     this.lastEmit = -1;
     for (let i = (this.phase + 1) as PhaseIndex; i <= p; i++) this.setPhase(i as PhaseIndex);
     this.hooks.time(this.left);
@@ -65,7 +67,7 @@ export class PhaseClock {
       this.hooks.time(this.left);
     }
     if (!this.manual) {
-      const p = phaseAt(this.elapsed, this.duration);
+      const p = phaseAt(this.elapsed, this.duration, this.bounds);
       if (p !== this.phase) this.setPhase(p);
     }
     if (this.elapsed >= this.duration) {

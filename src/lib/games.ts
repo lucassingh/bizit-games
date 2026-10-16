@@ -6,6 +6,9 @@
 
 export type GameId = "compania" | "deploy" | "central";
 
+/** Ícono de una ficha del briefing: un gesto (mano animada) o un símbolo del juego. */
+export type TipIcon = Gesture | "plug" | "auto" | "target";
+
 export type Gesture = "swipe-h" | "tap" | "drag-release" | "tap-area" | "tap-fast" | "hold-up";
 
 export interface GameInfo {
@@ -19,8 +22,12 @@ export interface GameInfo {
   steps: [string, string, string];
   /** `short`: nombre corto para la leyenda del HUD (una o dos palabras). */
   controls: { gesture: Gesture; label: string; short: string }[];
+  /** Cómo se juega en el briefing: 3 golpes de vista (verbo + complemento corto), sin párrafos. */
+  tips: { icon: TipIcon; verb: string; text: string }[];
   /** Etiqueta de la métrica estrella que muestra el HUD. */
   metricLabel: string;
+  /** Fin de Drive, Foundation y Evolution (fracción de la duración), si el juego no usa los comunes. */
+  phaseUntil?: readonly [number, number, number];
   accent: string;
   accentDeep: string;
 }
@@ -38,6 +45,11 @@ export const GAMES: Record<GameId, GameInfo> = {
       { gesture: "tap", label: "Tocá para saltar", short: "Saltar" },
       { gesture: "hold-up", label: "Mantené arriba: turbo", short: "Turbo" },
     ],
+    tips: [
+      { icon: "swipe-h", verb: "Deslizá", text: "y cambiás de carril" },
+      { icon: "tap", verb: "Tocá", text: "y saltás los Problemones" },
+      { icon: "plug", verb: "Juntá conectores", text: "y conectás cada área" },
+    ],
     metricLabel: "Compañía conectada",
     accent: "#F75D00",
     accentDeep: "#b84400",
@@ -52,6 +64,11 @@ export const GAMES: Record<GameId, GameInfo> = {
     controls: [
       { gesture: "drag-release", label: "Arrastrá y soltá para lanzar", short: "Lanzar" },
       { gesture: "tap", label: "Tocá en el aire: habilidad", short: "Habilidad" },
+    ],
+    tips: [
+      { icon: "drag-release", verb: "Tirá y soltá", text: "para lanzar a BGen" },
+      { icon: "tap", verb: "Tocá en el aire", text: "y usa su habilidad" },
+      { icon: "target", verb: "Derribá la torre", text: "sin dejar Problemones" },
     ],
     metricLabel: "Problemas eliminados",
     accent: "#662D91",
@@ -68,7 +85,14 @@ export const GAMES: Record<GameId, GameInfo> = {
       { gesture: "swipe-h", label: "Arrastrá el dedo: BGen te sigue y dispara solo", short: "Mover" },
       { gesture: "tap-fast", label: "Al final: tocá rápido y cargá el rayo", short: "Rayo" },
     ],
+    tips: [
+      { icon: "swipe-h", verb: "Arrastrá", text: "y BGen te sigue" },
+      { icon: "auto", verb: "Dispara solo", text: "y automatiza las tareas" },
+      { icon: "tap-fast", verb: "Al final, tocá rápido", text: "y cargá el rayo" },
+    ],
     metricLabel: "Tareas automatizadas",
+    // el jefe final necesita tiempo (calma, bajada y pelea): 90 s → 22 / 44 / 63, Caos 63–90
+    phaseUntil: [22 / 90, 44 / 90, 63 / 90],
     accent: "#0AB6BC",
     accentDeep: "#067f84",
   },
@@ -98,14 +122,20 @@ export const PHASES = [
 
 export type PhaseIndex = 0 | 1 | 2 | 3;
 
-export function phaseAt(elapsed: number, duration: number): PhaseIndex {
+/** Fin de cada fase (fracción de la duración): los comunes o los propios del juego (`phaseUntil`). */
+export function phaseBounds(id?: GameId): readonly number[] {
+  const own = id ? GAMES[id].phaseUntil : undefined;
+  return own ? [...own, 1] : PHASES.map((p) => p.until);
+}
+
+export function phaseAt(elapsed: number, duration: number, bounds: readonly number[] = phaseBounds()): PhaseIndex {
   const f = elapsed / duration;
-  for (let i = 0; i < PHASES.length; i++) if (f < PHASES[i].until) return i as PhaseIndex;
+  for (let i = 0; i < bounds.length; i++) if (f < bounds[i]) return i as PhaseIndex;
   return 3;
 }
 
-export function phaseStart(i: PhaseIndex, duration: number): number {
-  return i === 0 ? 0 : PHASES[i - 1].until * duration;
+export function phaseStart(i: PhaseIndex, duration: number, bounds: readonly number[] = phaseBounds()): number {
+  return i === 0 ? 0 : bounds[i - 1] * duration;
 }
 
 /** Variables CSS para teñir la UI con el acento del juego. */
