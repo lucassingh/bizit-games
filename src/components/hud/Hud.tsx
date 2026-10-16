@@ -5,7 +5,7 @@ import { Heart, Network, Users, Zap } from "lucide-react";
 import BGen from "../BGen";
 import GestureIcon from "../GestureIcon";
 import TechFrame from "../TechFrame";
-import { GAMES, PHASES, type GameId } from "@/lib/games";
+import { GAMES, PHASES, phaseBounds, type GameId } from "@/lib/games";
 import { useHud } from "@/lib/store";
 import h from "./hud.module.css";
 
@@ -69,15 +69,15 @@ function TimeRing({ timeLeft, duration, size }: { timeLeft: number; duration: nu
 
 /** Niveles de agentes (Drive, Foundation, Evolution): nodos conectados; el tramo actual se llena con el tiempo. */
 const LEVELS = PHASES.slice(0, 3);
-function PhaseMap({ phase, elapsedFrac, vertical }: { phase: number; elapsedFrac: number; vertical: boolean }) {
+function PhaseMap({ phase, elapsedFrac, vertical, bounds }: { phase: number; elapsedFrac: number; vertical: boolean; bounds: readonly number[] }) {
   return (
     <ol className={`${h.map} ${vertical ? h.mapV : h.mapH}`}>
       {LEVELS.map((p, i) => {
         const Icon = PHASE_ICONS[i];
         // el tramo que llega a este nodo: lleno si ya pasamos, parcial (por tiempo) si es el próximo
-        const prev = PHASES[i - 1];
-        const start = i <= 1 ? 0 : PHASES[i - 2].until;
-        const partial = prev ? Math.max(0, Math.min(1, (elapsedFrac - start) / (prev.until - start))) : 0;
+        const end = i > 0 ? bounds[i - 1] : 0;
+        const start = i <= 1 ? 0 : bounds[i - 2];
+        const partial = i > 0 ? Math.max(0, Math.min(1, (elapsedFrac - start) / (end - start))) : 0;
         const link = i <= phase ? 1 : i === phase + 1 ? partial : 0;
         const state = i < phase ? h.done : i === phase ? h.now : "";
         return (
@@ -152,7 +152,7 @@ export default function Hud({ game, layout }: { game: GameId; layout: "tv" | "ta
   const phaseBlock = (
     <div className={`${h.plaque} ${h.phasePlaque} ${phase === 3 ? h.phaseCaos : ""}`}>
       <span className={h.label}>{phase === 3 ? "¡Caos operativo!" : "Nivel de agentes"}</span>
-      <PhaseMap phase={phase} elapsedFrac={elapsedFrac} vertical={tv} />
+      <PhaseMap phase={phase} elapsedFrac={elapsedFrac} vertical={tv} bounds={phaseBounds(game)} />
     </div>
   );
 
