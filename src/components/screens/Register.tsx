@@ -3,6 +3,8 @@
 import { useState } from "react";
 import BGen from "../BGen";
 import Header, { Steps } from "../Header";
+import { FlyerArt } from "../Flyer";
+import { DECAGON_PATH } from "@/lib/brand";
 import { useSession } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import { putLead } from "@/lib/leads/queue";
@@ -87,8 +89,7 @@ export default function Register({ config }: { config: KioskConfig }) {
 
         <div className={s.registerGrid}>
           <div className={s.side}>
-            <p className="bubble bubble-left">¡Hola! Antes de arrancar, contame quién sos.</p>
-            <BGen expr="curioso" size="min(26vh, 240px)" followPointer />
+            <Stage />
             <h1 className={s.h1}>
               Sumate al <em>desafío</em> de BGen
             </h1>
@@ -165,5 +166,67 @@ export default function Register({ config }: { config: KioskConfig }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Lo que flota alrededor de la ventana: centro (% del escenario), alto (% del escenario) y giro. */
+const STAGE_ITEMS = [
+  { k: "fantasma", x: 9, y: 50, s: 17, r: -10 },
+  { k: "excel", x: 92, y: 45, s: 14, r: 12 },
+  { k: "mail", x: 12, y: 87, s: 8.5, r: -14 },
+  { k: "factura", x: 89, y: 84, s: 17, r: 10 },
+  { k: "doc", x: 6, y: 26, s: 5.5, r: -22 },
+  { k: "sobre", x: 94, y: 22, s: 4, r: 18 },
+  { k: "grafico", x: 99, y: 65, s: 5, r: -12 },
+];
+
+/**
+ * Escenario del registro: versión calma de la portada. La empresa se ve por una
+ * ventana con la forma de BGen, él asoma por el borde de abajo y algunos
+ * Problemones flotan alrededor (sin estallido ni rayo: lo importante es el form).
+ */
+function Stage() {
+  return (
+    <div className={s.stage}>
+      <div className={s.stageArt} aria-hidden="true">
+        <svg className={s.portal} viewBox="-4 -4 136 136">
+          <defs>
+            <clipPath id="reg-portal">
+              <path d={DECAGON_PATH} />
+            </clipPath>
+            <linearGradient id="reg-sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#BFE8EE" />
+              <stop offset="0.55" stopColor="#EAF7F5" />
+              <stop offset="1" stopColor="#FFF4E8" />
+            </linearGradient>
+            <radialGradient id="reg-haze" cx="0.5" cy="0.55" r="0.6">
+              <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0.55" />
+            </radialGradient>
+          </defs>
+          <g clipPath="url(#reg-portal)">
+            <rect x="-4" y="-4" width="136" height="136" fill="url(#reg-sky)" />
+            <image href="/sprites/home/cover-city.webp" x="-6" y="4" width="140" height="133" preserveAspectRatio="xMidYMax slice" opacity="0.8" />
+            <rect x="-4" y="-4" width="136" height="136" fill="url(#reg-haze)" />
+          </g>
+          <path d={DECAGON_PATH} fill="none" stroke="#E6E1DC" strokeWidth="2.4" strokeLinejoin="round" />
+        </svg>
+        {STAGE_ITEMS.map((it, i) => (
+          <span
+            key={it.k}
+            className={s.stageFly}
+            style={{ left: `${it.x}%`, top: `${it.y}%`, "--s": it.s, "--r": `${it.r}deg`, "--fx": `${50 - it.x}cqw`, "--fy": `${60 - it.y}cqh`, "--d": `${0.25 + i * 0.07}s`, "--t": `${3.2 + (i % 3) * 0.5}s` } as React.CSSProperties}
+          >
+            <span className={s.stageBob}>
+              <FlyerArt k={it.k} />
+            </span>
+          </span>
+        ))}
+        <div className={s.stageHero}>
+          <BGen expr="curioso" size="var(--hero)" followPointer aura />
+        </div>
+      </div>
+      <p className={`bubble ${s.stageSay}`}>¡Hola! Antes de arrancar, contame quién sos.</p>
+    </div>
   );
 }

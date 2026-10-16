@@ -9,179 +9,6 @@
   pointer-events: none;
 }
 
-.bgLoop {
-  position: absolute;
-  right: -10%;
-  bottom: -24%;
-  width: 62%;
-  max-width: 1100px;
-  opacity: 0.08;
-  pointer-events: none;
-}
-
-/* ---------- Inicio ---------- */
-.attract {
-  cursor: pointer;
-}
-
-.attractGrid {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.8fr) calc(270 * var(--u));
-  grid-template-rows: minmax(0, 1fr);
-  align-items: center;
-  gap: calc(44 * var(--u));
-  min-height: 0;
-  padding-top: calc(16 * var(--u));
-}
-
-.kicker {
-  font-family: var(--heading);
-  font-size: calc(34 * var(--u));
-  font-weight: 400;
-  line-height: 1.08;
-  letter-spacing: -0.4px;
-}
-
-.giant {
-  display: block;
-  font-family: var(--display);
-  font-size: calc(150 * var(--u));
-  line-height: 0.88;
-  letter-spacing: -4px;
-  background: var(--grad-bizit);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin: calc(4 * var(--u)) 0 calc(14 * var(--u)) calc(-5 * var(--u));
-}
-
-.lede {
-  font-size: calc(18 * var(--u));
-  color: var(--muted);
-  max-width: 34ch;
-  margin-bottom: calc(26 * var(--u));
-}
-
-.lede b {
-  color: var(--ink);
-}
-
-.ctaPulse {
-  animation: pulse-ring 1.8s ease-out infinite;
-}
-
-.heroCenter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(16 * var(--u));
-  min-height: 0;
-}
-
-/* ranking estilo tabla de posiciones: angosto, alto, fijo, con scroll sutil */
-.rankPanel {
-  align-self: stretch;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: calc(14 * var(--u)) calc(16 * var(--u));
-  border-radius: calc(18 * var(--u));
-  cursor: default;
-}
-
-.rankHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: calc(8 * var(--u));
-  padding-bottom: calc(10 * var(--u));
-  border-bottom: calc(2 * var(--u)) solid var(--line);
-}
-
-.rankHead h3 {
-  font-family: var(--display);
-  font-size: calc(15 * var(--u));
-}
-
-.rankList {
-  flex: 1;
-  min-height: 0;
-  padding-right: calc(4 * var(--u));
-}
-
-.rankRow {
-  display: grid;
-  grid-template-columns: calc(26 * var(--u)) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: calc(8 * var(--u));
-  padding: calc(7 * var(--u)) 0;
-  border-bottom: 1px solid var(--line);
-  font-size: calc(13.5 * var(--u));
-  font-weight: 700;
-}
-
-.rankRow:last-child {
-  border-bottom: 0;
-}
-
-.rankName {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.15;
-}
-
-.rankName span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rankGame {
-  font: 500 calc(10 * var(--u)) var(--mono);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.rankPos {
-  width: calc(24 * var(--u));
-  height: calc(24 * var(--u));
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--surface-2);
-  font-family: var(--mono);
-  font-size: calc(11.5 * var(--u));
-}
-
-.rankRow:nth-child(1) .rankPos {
-  background: var(--orange);
-  color: #fff;
-}
-
-.rankRow:nth-child(2) .rankPos,
-.rankRow:nth-child(3) .rankPos {
-  background: var(--ink);
-  color: #fff;
-}
-
-.rankScore {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.empty {
-  color: var(--muted);
-  font-size: calc(13.5 * var(--u));
-  padding-top: calc(10 * var(--u));
-}
-
 /* ---------- Registro ---------- */
 .registerGrid {
   position: relative;
@@ -212,6 +39,107 @@
 .h1 em {
   font-style: normal;
   color: var(--orange);
+}
+
+/* escenario del registro: la portada en versión calma (ventana-decágono con la empresa,
+   BGen asomando por abajo y Problemones flotando). Todo en unidades del escenario. */
+.stage {
+  position: relative;
+  width: min(100%, calc(440 * var(--u)), 44vh);
+  aspect-ratio: 1 / 1.12;
+  container-type: size;
+  --hero: 42cqw;
+}
+
+.stageArt {
+  position: absolute;
+  inset: 0;
+}
+
+.portal {
+  position: absolute;
+  left: 8%;
+  top: 14%;
+  width: 84%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  animation: stage-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.05s both;
+}
+
+.stageFly {
+  position: absolute;
+  z-index: 1;
+  translate: -50% -50%;
+  line-height: 0;
+  animation: stage-fly-in 0.7s cubic-bezier(0.2, 0.85, 0.3, 1.1) var(--d) both;
+}
+
+.stageBob {
+  display: block;
+  animation: stage-bob var(--t) ease-in-out calc(var(--d) + 0.7s) infinite alternate;
+}
+
+.stageBob > * {
+  display: block;
+  height: calc(var(--s) * 1cqh);
+  width: auto;
+  rotate: var(--r);
+  filter: drop-shadow(0 0.8cqh 0.8cqh rgba(33, 37, 41, 0.18));
+  user-select: none;
+}
+
+.stageHero {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  rotate: -4deg;
+  line-height: 0;
+  animation: stage-hero-in 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.2) 0.15s both;
+}
+
+.stageHero > svg {
+  filter: drop-shadow(0 1.6cqh 1.8cqh rgba(33, 37, 41, 0.22));
+}
+
+/* el globo arriba, apenas montado sobre el borde de la ventana: la empresa queda a la vista */
+.stageSay {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 0;
+  translate: -50% 0;
+  width: max-content;
+  max-width: 24ch;
+}
+
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+
+@keyframes stage-fly-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--fx), var(--fy)) scale(0.4);
+  }
+}
+
+@keyframes stage-bob {
+  to {
+    transform: translateY(-2cqh) rotate(3deg);
+  }
+}
+
+@keyframes stage-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(10cqh) scale(0.7);
+  }
 }
 
 .form {
@@ -472,31 +400,56 @@
   box-shadow: 0 calc(4 * var(--u)) 0 var(--accent-deep);
 }
 
-/* ---------- Pantalla intermedia ---------- */
+/* ---------- Pantalla intermedia (briefing): escenario del juego + misión, cómo se juega y CTA ---------- */
 .briefGrid {
   position: relative;
   z-index: 1;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  align-items: center;
-  gap: calc(28 * var(--u));
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: calc(30 * var(--u));
   min-height: 0;
+  padding-top: calc(14 * var(--u));
 }
 
-.briefHero {
+.briefMain {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  justify-content: safe center;
+  gap: clamp(calc(12 * var(--u)), 3.2vh, calc(36 * var(--u)));
+  container-type: inline-size;
+  /* alto de los Problemones del desfile: crece con la pantalla */
+  --sprite: clamp(calc(50 * var(--u)), 12vh, calc(130 * var(--u)));
+}
+
+.briefMain > * {
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.briefKicker {
+  align-self: flex-start;
+  display: inline-flex;
   align-items: center;
-  gap: calc(16 * var(--u));
+  gap: calc(7 * var(--u));
+  padding: calc(6 * var(--u)) calc(14 * var(--u)) calc(6 * var(--u)) calc(10 * var(--u));
+  border: calc(1.5 * var(--u)) solid color-mix(in srgb, var(--accent) 35%, #fff);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: var(--accent-deep);
+  font: 700 calc(12 * var(--u)) var(--mono);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
 }
 
 .mission {
+  margin: 0;
   font-family: var(--display);
-  font-size: calc(40 * var(--u));
+  font-size: min(calc(56 * var(--u)), 6.4cqi, 7vh);
   line-height: 1.02;
   letter-spacing: -1px;
-  margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
+  text-wrap: balance;
 }
 
 .mission em {
@@ -504,77 +457,184 @@
   color: var(--accent);
 }
 
-.howTo {
-  font-size: calc(16 * var(--u));
-  color: var(--muted);
-  max-width: 50ch;
-}
-
-.phases {
+/* cómo se juega: una ficha por gesto, verbo grande + complemento corto */
+.tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
   gap: calc(10 * var(--u));
-  margin: calc(8 * var(--u)) 0;
 }
 
-.phaseCard {
-  padding: calc(11 * var(--u)) calc(13 * var(--u));
-  border-radius: var(--radius);
-  background: #fff;
-  border: calc(2 * var(--u)) solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: calc(6 * var(--u));
-  animation: rise-in 0.5s both;
-}
-
-.planChip {
-  align-self: flex-start;
-  font: 800 calc(10.5 * var(--u)) var(--body);
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  padding: calc(4 * var(--u)) calc(9 * var(--u));
-  border-radius: 999px;
-  background: var(--noche);
-  color: var(--lima);
-}
-
-.phaseCard b {
-  font-family: var(--heading);
-  font-weight: 900;
-  font-size: calc(15.5 * var(--u));
-  line-height: 1.15;
-}
-
-.controlsRow {
-  display: flex;
-  gap: calc(12 * var(--u));
-  flex-wrap: wrap;
-  margin-bottom: calc(12 * var(--u));
-}
-
-.control {
+.tip {
   display: flex;
   align-items: center;
   gap: calc(12 * var(--u));
-  background: #fff;
+  min-width: 0;
+  padding: calc(10 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u)) calc(10 * var(--u));
   border: calc(2 * var(--u)) solid var(--line);
-  border-radius: var(--radius);
-  padding: calc(8 * var(--u)) calc(18 * var(--u)) calc(8 * var(--u)) calc(10 * var(--u));
-  font-weight: 700;
-  font-size: calc(14.5 * var(--u));
+  border-radius: calc(18 * var(--u));
+  background: #fff;
+  box-shadow: 0 calc(4 * var(--u)) 0 var(--line);
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.tipIcon {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(calc(50 * var(--u)), 9vh, calc(96 * var(--u)));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, #fff);
+  color: var(--accent);
+}
+
+.tipIcon svg {
+  width: 66%;
+  height: 66%;
+}
+
+.tipNum {
+  position: absolute;
+  top: calc(-3 * var(--u));
+  left: calc(-3 * var(--u));
+  display: grid;
+  place-items: center;
+  width: calc(22 * var(--u));
+  height: calc(22 * var(--u));
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font: 700 calc(11 * var(--u)) var(--mono);
+}
+
+.tipText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(3 * var(--u));
+  min-width: 0;
+  font-size: clamp(calc(13 * var(--u)), 1.7vh, calc(17 * var(--u)));
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.tipText b {
+  font-family: var(--display);
+  font-weight: 400;
+  /* crece con el alto, pero nunca más de lo que entra en la ficha (2.4 % del ancho de la columna) */
+  font-size: min(clamp(calc(16 * var(--u)), 2.9vh, calc(28 * var(--u))), 2.4cqi);
+  overflow-wrap: break-word;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+/* CTA con la cuenta regresiva a la vista */
 .goRow {
   display: flex;
   align-items: center;
-  gap: calc(18 * var(--u));
+  flex-wrap: wrap;
+  gap: calc(16 * var(--u));
 }
 
-.countdown {
+.goRow .go {
+  min-height: clamp(calc(66 * var(--u)), 9.6vh, calc(96 * var(--u)));
+  padding-inline: calc(50 * var(--u));
+  font-size: clamp(calc(24 * var(--u)), 3.5vh, calc(36 * var(--u)));
+  animation: pulse-ring 1.8s ease-out 1s infinite;
+}
+
+.timer {
+  position: relative;
+  flex: none;
+  width: clamp(calc(56 * var(--u)), 7.4vh, calc(76 * var(--u)));
+  height: clamp(calc(56 * var(--u)), 7.4vh, calc(76 * var(--u)));
+}
+
+.timer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  rotate: -90deg;
+}
+
+.ringBg,
+.ringFg {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ringBg {
+  stroke: var(--line);
+}
+
+.ringFg {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 119.38;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.timer b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(calc(22 * var(--u)), 2.9vh, calc(29 * var(--u)));
+  animation: pop-in 0.35s ease both;
+}
+
+.timerText {
   font-family: var(--mono);
+  font-size: calc(13 * var(--u));
+  line-height: 1.45;
   color: var(--muted);
-  font-size: calc(13.5 * var(--u));
+}
+
+.timerText b {
+  color: var(--ink);
+}
+
+/* columna de la derecha angosta (tablet): fichas más compactas */
+@container (max-width: 720px) {
+  .tip {
+    gap: calc(10 * var(--u));
+    padding: calc(8 * var(--u)) calc(10 * var(--u));
+  }
+  .tipIcon {
+    width: calc(50 * var(--u));
+  }
+  .tipText b {
+    font-size: calc(17 * var(--u));
+  }
+  .tipText {
+    font-size: calc(12.5 * var(--u));
+  }
+}
+
+/* muy angosta: la ficha se apila (ícono arriba, texto abajo) y el texto del timer se oculta */
+@container (max-width: 560px) {
+  .tip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .tipIcon {
+    width: calc(44 * var(--u));
+  }
+  .timerText {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .briefGrid {
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    gap: calc(22 * var(--u));
+  }
 }
 
 /* ---------- Resultado ---------- */
@@ -732,61 +792,27 @@
 
 /* ---------- tablet vertical / pantallas chicas ---------- */
 @media (max-aspect-ratio: 1/1), (max-width: 760px) {
-  .attractGrid,
   .registerGrid,
   .briefGrid,
   .resultGrid {
     grid-template-columns: 1fr;
     align-content: center;
   }
-  .rankPanel {
-    display: none;
-  }
-  .giant {
-    font-size: calc(120 * var(--u));
-  }
   .side {
     display: none;
   }
-  .phases {
-    grid-template-columns: 1fr;
+  /* briefing: el escenario arriba (más bajo) y todo lo demás abajo, sin scroll */
+  .briefGrid {
+    grid-template-rows: minmax(0, 30vh) minmax(0, 1fr);
+    align-content: stretch;
+    gap: calc(18 * var(--u));
   }
-}
-
-@media (max-height: 700px) {
-  .giant {
-    font-size: calc(120 * var(--u));
+  .briefMain {
+    justify-content: space-evenly;
+    gap: calc(14 * var(--u));
   }
-  .kicker {
-    font-size: calc(28 * var(--u));
-  }
-  .mission {
-    font-size: calc(36 * var(--u));
-  }
-}
-
-/* tablet apaisada (≈800 px de alto): el briefing entero tiene que entrar sin scroll */
-@media (max-height: 920px) {
-  .mission {
-    font-size: calc(36 * var(--u));
-    margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
-  }
-  .howTo {
-    font-size: calc(14 * var(--u));
-  }
-  .phases {
-    margin: calc(8 * var(--u)) 0;
-  }
-  .phaseCard {
-    padding: calc(10 * var(--u)) calc(12 * var(--u));
-    gap: calc(5 * var(--u));
-  }
-  .controlsRow {
-    gap: calc(8 * var(--u));
-    margin-bottom: calc(10 * var(--u));
-  }
-  .control {
-    padding: calc(5 * var(--u)) calc(14 * var(--u)) calc(5 * var(--u)) calc(8 * var(--u));
-    font-size: calc(13.5 * var(--u));
+  .tip {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
