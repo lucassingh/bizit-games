@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: calc(8 * var(--u));
-  margin: calc(14 * var(--u)) 0 calc(6 * var(--u));
+  margin: calc(10 * var(--u)) 0 calc(4 * var(--u));
 }
 
 .title {
@@ -157,7 +157,7 @@
 }
 
 /* pantallas bajas (tablet apaisada): cartas más compactas, sin la línea de detalle */
-@media (max-height: 840px) {
+@media (max-height: 920px) {
   .wrap {
     margin: calc(8 * var(--u)) 0 calc(2 * var(--u));
   }
