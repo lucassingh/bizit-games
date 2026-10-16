@@ -1,4 +1,5 @@
 import { COLORS } from "@/lib/brand";
+import { drawCaosFace, drawCaosScreenFrame, drawPaperTornado, SCREEN_HALF, type CaosFace } from "../shared/caos";
 
 /**
  * El Caos Operativo, jefe final del juego 3: una nave nodriza ancha, como en los
@@ -10,7 +11,7 @@ import { COLORS } from "@/lib/brand";
 
 export const HALF_W = 440;
 /** Mitad del ancho de la cara-pantalla: los disparos ahí hacen el doble de daño. */
-export const CORE_HALF = 112;
+export const CORE_HALF = SCREEN_HALF;
 /** Compuertas (x local) por donde caen las tareas. */
 export const HATCHES = [-320, -170, 170, 320] as const;
 /** Altura (y local) de la boca, abajo de la cara. */
@@ -58,20 +59,9 @@ function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: num
   g.roundRect(x, y, w, h, r);
 }
 
-export interface BossLook {
-  t: number;
-  /** Vida 0..1. */
-  hp: number;
-  /** Destello de golpe 0..1. */
-  flash: number;
-  /** Enfurecido (poca vida): más rojo, más rápido. */
-  rage: boolean;
-  /** Hacia dónde mira (-1..1): sigue a BGen. */
-  gaze: number;
+export interface BossLook extends CaosFace {
   /** Apertura de cada compuerta 0..1. */
   hatch: number[];
-  /** Apertura de la boca 0..1. */
-  mouth: number;
   /** -1 vivo; 0..1 explotando. */
   dying: number;
 }
@@ -209,18 +199,7 @@ function hullSprite(rage: boolean) {
     g.fill();
   }
   // marco de la cara-pantalla
-  rr(g, -CORE_HALF, -50, CORE_HALF * 2, 112, 34);
-  g.fillStyle = "#0A0A0C";
-  g.fill();
-  g.strokeStyle = rage ? "#7a2030" : "#3a3150";
-  g.lineWidth = 7;
-  g.stroke();
-  g.save();
-  rr(g, -CORE_HALF + 6, -44, CORE_HALF * 2 - 12, 100, 28);
-  g.clip();
-  g.fillStyle = "rgba(255,255,255,0.035)";
-  for (let sy = -44; sy < 56; sy += 6) g.fillRect(-CORE_HALF, sy, CORE_HALF * 2, 2);
-  g.restore();
+  drawCaosScreenFrame(g, rage);
   // el sprite tarda en estar listo si la fuente todavía no cargó: no se cachea hasta que esté
   if (document.fonts?.check?.('900 17px "Archivo Black"') !== false) sprites.set(key, c);
   return c;
@@ -255,27 +234,7 @@ export function drawBoss(g: CanvasRenderingContext2D, x: number, y: number, tilt
   g.globalAlpha = 1;
 
   // torbellino de papeles (la firma del Caos), arriba al centro
-  g.lineWidth = 3;
-  for (let k = 0; k < 4; k++) {
-    g.strokeStyle = `rgba(214,200,240,${0.16 + k * 0.05})`;
-    g.beginPath();
-    g.ellipse(Math.sin(t * 3 + k) * 6, -86 - k * 16, 70 - k * 14, 12 - k * 2, 0, 0, Math.PI * 2);
-    g.stroke();
-  }
-  const PAPER = ["#D9CBB0", "#BDB3A0", "#EDE6DA"];
-  for (let k = 0; k < 16; k++) {
-    const a = t * 2.6 + k * 0.4;
-    const rad = 96 + 22 * Math.sin(t * 2 + k);
-    g.save();
-    g.translate(Math.cos(a) * rad, -96 + Math.sin(a) * 26 - (k % 4) * 9);
-    g.rotate(a * 1.4);
-    g.fillStyle = PAPER[k % 3];
-    g.fillRect(-11, -8, 22, 16);
-    g.fillStyle = "rgba(0,0,0,0.25)";
-    g.fillRect(-7, -3, 14, 2);
-    g.fillRect(-7, 2, 10, 2);
-    g.restore();
-  }
+  drawPaperTornado(g, t);
 
   // humo de las chimeneas
   for (const sx of [-250, 250]) {
@@ -365,7 +324,7 @@ export function drawBoss(g: CanvasRenderingContext2D, x: number, y: number, tilt
   }
 
   // la cara-pantalla: el punto débil
-  drawFace(g, L);
+  drawCaosFace(g, L);
 
   // humo y fuego cuando está dañado
   const smoke = (sx: number, sy: number, seed: number) => {
@@ -401,165 +360,5 @@ export function drawBoss(g: CanvasRenderingContext2D, x: number, y: number, tilt
     g.fillStyle = "rgba(255,240,200,0.55)";
     g.fill();
   }
-  g.restore();
-}
-
-function drawFace(g: CanvasRenderingContext2D, L: BossLook) {
-  const { t } = L;
-  const led = L.rage ? (Math.sin(t * 20) > -0.4 ? "#ff6a2a" : "#ff2a2a") : "#ff3b3b";
-  const gx = L.gaze * 12;
-  const squint = L.flash > 0.4 ? 0.35 : 1;
-  g.save();
-  g.lineCap = "round";
-  g.lineJoin = "round";
-  // ojos furiosos (inclinados hacia el centro): halo + LED
-  for (const s of [-1, 1]) {
-    g.save();
-    g.translate(s * 46 + gx, -4);
-    g.scale(1, squint);
-    g.beginPath();
-    g.moveTo(-s * 30, -12);
-    g.lineTo(s * 24, 2);
-    g.lineTo(s * 20, 15);
-    g.lineTo(-s * 26, 9);
-    g.closePath();
-    g.strokeStyle = "rgba(255,59,59,0.3)";
-    g.lineWidth = 12;
-    g.stroke();
-    g.fillStyle = led;
-    g.fill();
-    g.restore();
-    g.strokeStyle = "rgba(255,59,59,0.3)";
-    g.lineWidth = 14;
-    g.beginPath();
-    g.moveTo(s * 84 + gx, -32);
-    g.lineTo(s * 22 + gx, -18);
-    g.stroke();
-    g.strokeStyle = led;
-    g.lineWidth = 7;
-    g.stroke();
-  }
-  // boca: dientes en zigzag; se abre para escupir
-  const mo = L.mouth;
-  if (mo > 0.05) {
-    const mg = g.createLinearGradient(0, 26, 0, 46 + mo * 14);
-    mg.addColorStop(0, "#ffd27a");
-    mg.addColorStop(1, COLORS.naranja);
-    g.fillStyle = mg;
-    rr(g, -44, 26, 88, 8 + mo * 18, 6);
-    g.fill();
-  }
-  g.beginPath();
-  for (let i = 0; i <= 8; i++) {
-    const mx = -44 + i * 11;
-    const my = 30 + (i % 2 ? 9 : 0) - mo * 6;
-    if (i) g.lineTo(mx, my);
-    else g.moveTo(mx, my);
-  }
-  g.strokeStyle = "rgba(255,59,59,0.3)";
-  g.lineWidth = 11;
-  g.stroke();
-  g.strokeStyle = led;
-  g.lineWidth = 5;
-  g.stroke();
-  // pantalla rajada con poca vida
-  if (L.hp < 0.33) {
-    g.strokeStyle = "rgba(255,255,255,0.55)";
-    g.lineWidth = 2.5;
-    g.beginPath();
-    g.moveTo(-70, -44);
-    g.lineTo(-38, -10);
-    g.lineTo(-52, 14);
-    g.lineTo(-20, 56);
-    g.moveTo(-38, -10);
-    g.lineTo(-4, -18);
-    g.moveTo(60, -44);
-    g.lineTo(44, -8);
-    g.lineTo(80, 20);
-    g.stroke();
-  }
-  g.restore();
-}
-
-/** Barra de vida arriba de todo (entra deslizando y se llena al presentarse). */
-export function drawBossBar(g: CanvasRenderingContext2D, cx: number, y: number, w: number, hp: number, trail: number, t: number, show: number, rage: boolean) {
-  if (show <= 0) return;
-  g.save();
-  g.globalAlpha = Math.min(1, show * 1.4);
-  g.translate(cx, y - (1 - Math.min(1, show)) * 30);
-  g.fillStyle = "rgba(19,19,21,0.9)";
-  g.strokeStyle = rage && Math.sin(t * 12) > 0 ? "#ff3b3b" : COLORS.rojo;
-  g.lineWidth = 3;
-  rr(g, -w / 2 - 16, -12, w + 32, 58, 12);
-  g.fill();
-  g.stroke();
-  g.fillStyle = "#fff";
-  g.font = '900 17px "Archivo Black", Archivo, Arial';
-  g.textAlign = "left";
-  g.textBaseline = "middle";
-  g.fillText("EL CAOS OPERATIVO", -w / 2, 5);
-  g.textAlign = "right";
-  g.font = "800 13px Inter, Arial";
-  g.fillStyle = rage ? "#ff8a8a" : "#c9c3d6";
-  g.fillText(rage ? "¡FURIOSO!" : "JEFE FINAL", w / 2, 5);
-  // barra
-  rr(g, -w / 2, 20, w, 16, 8);
-  g.fillStyle = "#2a2430";
-  g.fill();
-  g.save();
-  rr(g, -w / 2, 20, w, 16, 8);
-  g.clip();
-  g.fillStyle = "#ffd27a";
-  g.fillRect(-w / 2, 20, w * Math.max(0, trail), 16);
-  const bg = g.createLinearGradient(-w / 2, 0, w / 2, 0);
-  bg.addColorStop(0, "#e80000");
-  bg.addColorStop(1, "#fe8100");
-  g.fillStyle = bg;
-  g.fillRect(-w / 2, 20, w * Math.max(0, hp), 16);
-  g.fillStyle = "rgba(255,255,255,0.25)";
-  g.fillRect(-w / 2, 20, w * Math.max(0, hp), 5);
-  g.fillStyle = "rgba(0,0,0,0.35)";
-  for (let k = 1; k < 10; k++) g.fillRect(-w / 2 + (w * k) / 10 - 1, 20, 2, 16);
-  g.restore();
-  g.restore();
-}
-
-/** Franja de "¡ALERTA!" mientras baja el jefe. */
-export function drawWarning(g: CanvasRenderingContext2D, W: number, y: number, t: number, k: number) {
-  if (k <= 0) return;
-  g.save();
-  g.globalAlpha = Math.min(1, k);
-  g.fillStyle = "rgba(110,8,16,0.62)";
-  g.fillRect(0, y - 62, W, 124);
-  for (const sy of [y - 62, y + 48]) {
-    g.save();
-    g.beginPath();
-    g.rect(0, sy, W, 14);
-    g.clip();
-    const off = (t * 140) % 40;
-    for (let x = -40; x < W + 40; x += 40) {
-      g.fillStyle = "#ffd027";
-      g.beginPath();
-      g.moveTo(x + off, sy);
-      g.lineTo(x + off + 20, sy);
-      g.lineTo(x + off + 6, sy + 14);
-      g.lineTo(x + off - 14, sy + 14);
-      g.closePath();
-      g.fill();
-    }
-    g.restore();
-  }
-  const blink = Math.sin(t * 11) > -0.35;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.font = '900 62px "Archivo Black", Archivo, Arial';
-  g.lineWidth = 8;
-  g.strokeStyle = "#0A0A0C";
-  g.fillStyle = blink ? "#fff" : "#ffb3b3";
-  g.strokeText("¡ALERTA!", W / 2, y - 12);
-  g.fillText("¡ALERTA!", W / 2, y - 12);
-  g.font = "800 19px Inter, Arial";
-  g.fillStyle = "#ffd027";
-  g.fillText("SE ACERCA EL CAOS OPERATIVO", W / 2, y + 30);
   g.restore();
 }

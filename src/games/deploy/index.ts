@@ -1,6 +1,6 @@
 import Matter from "matter-js";
 import type { CreateGame, Expr, GameHooks } from "../types";
-import type { PhaseIndex } from "@/lib/games";
+import { PHASES, type PhaseIndex } from "@/lib/games";
 import { bindGestures, fitCanvas, PhaseClock, Popups, Scorer } from "../shared/engine";
 import { drawBGen, makeBlinker } from "../shared/bgenFace";
 import { COLORS } from "@/lib/brand";
@@ -8,11 +8,17 @@ import { Cable, Coins, Crown, Radio, type IconNode } from "lucide";
 import { drawIcon } from "../shared/icons";
 import { music, rubber, sfx } from "@/lib/audio";
 import { CITY_IMG, drawBackground, drawBands, drawEnemySprite, drawPlaque, drawSlingshot, type EnemyKind } from "./art";
+import { drawCaosPod, POD_H, POD_W } from "./boss";
+import { drawBossBar, drawDefeated, drawWarning } from "../shared/caos";
 
 /**
  * Juego 2 · Deploy BGen — "Derribá el Caos" (docs/04).
  * Física: Matter.js. Render: Canvas 2D con el estilo plano del kit.
  * 3 torres = Drive / Foundation / Evolution (con el jefe, el Caos Operativo).
+ * El jefe es el mismo Caos del juego 3 adaptado a la gomera: al llegar a la
+ * tercera torre baja del cielo con la alerta y se apoya arriba de todo; está
+ * blindado hasta que caen los Problemones (la barra lo muestra) y es un cuerpo
+ * físico más: los golpes y las caídas le bajan vida. Al morir explota en cadena.
  */
 
 const { Engine, Bodies, Body, Composite, Events, Sleeping, Vector } = Matter;
@@ -40,6 +46,16 @@ const SLING = { x: 250, y: GROUND - 180 };
 const MAX_PULL = 185;
 const POWER = 0.125;
 const G_STEP = 0.001 * (1000 / 60) ** 2; // aceleración por paso (gravedad de Matter)
+
+/* ---------- el jefe ---------- */
+const BOSS_HP = 16;
+/** Segundos que tarda en bajar del cielo hasta la torre (con la alerta); mientras, no se lanza. */
+const BOSS_DESCENT = 2.3;
+/** Segundos que explota en cadena antes del final. */
+const BOSS_DYING = 1.4;
+const BOSS_X = 1250;
+/** Centro del núcleo apoyado sobre el tablón de arriba de la tercera torre. */
+const BOSS_LAND_Y = GROUND - 294 - POD_H / 2;
 
 const AGENTS: Record<Agent, { name: string; color: string; icon?: IconNode; ability: string }> = {
   bgen: { name: "BGen", color: COLORS.niebla, ability: "¡Apuntá bien!" },
@@ -85,6 +101,16 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   let ended = false;
   let cable: { from: Matter.Vector; to: Matter.Vector; life: number } | null = null;
   let wave: { x: number; y: number; life: number } | null = null;
+  // jefe
+  let bossBody: Matter.Body | null = null;
+  /** Segundos desde que empezó a bajar (-1: no está bajando). */
+  let bossIntro = -1;
+  let bossFlash = 0, bossShieldHit = 0, bossMouth = 0, bossTrail = 1;
+  let bossExposedAt = -9, lastBossPopup = -9, lastBoomSfx = -9;
+  let bossKilled = false;
+  /** El Caos explotando en cadena (ya no es un cuerpo físico). */
+  let corpse: { x: number; y: number; angle: number; t: number; boomIn: number } | null = null;
+  let killT = -1, killPts = 0, screenFlash = 0, shake = 0;
   const particles: { x: number; y: number; vx: number; vy: number; life: number; c: string; r: number; img?: HTMLImageElement; rot?: number; vr?: number }[] = [];
 
   // sprites de bloques (Kenney Physics Assets, CC0): intacto y rajado por material
@@ -105,7 +131,14 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     hooks.bgen(e, text);
   };
 
-  const clock = new PhaseClock(hooks, opts.durationSec, undefined, true);
+  // el cartel "¡El Caos Operativo!" lo reemplazan la alerta y la barra del jefe (como en el juego 3)
+  const clockHooks: GameHooks = {
+    ...hooks,
+    banner: (title, subtitle) => {
+      if (title !== PHASES[3].title) hooks.banner(title, subtitle);
+    },
+  };
+  const clock = new PhaseClock(clockHooks, opts.durationSec, undefined, true);
 
   /* ---------- mundo ---------- */
   const ground = Bodies.rectangle(WORLD_W / 2, GROUND + 60, WORLD_W * 3, 120, { isStatic: true, friction: 1, label: "ground" });
@@ -123,6 +156,14 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     const b = Bodies.circle(x, y, r, { friction: 0.8, restitution: 0.1, density, frictionAir: 0.004, slop: 0.02, sleepThreshold: 30 });
     b.plugin = { meta: { kind, hp, maxHp: hp, enemy, r, shield: kind === "boss" } satisfies Meta };
     Composite.add(world, b);
+    return b;
+  }
+
+  function addBoss(x: number, y: number) {
+    const b = Bodies.rectangle(x, y, POD_W, POD_H, { chamfer: { radius: 18 }, friction: 0.9, frictionStatic: 1.2, restitution: 0.05, density: 0.0009, slop: 0.02, sleepThreshold: 30 });
+    b.plugin = { meta: { kind: "boss", hp: BOSS_HP, maxHp: BOSS_HP, enemy: true, w: POD_W, h: POD_H, shield: true } satisfies Meta };
+    Composite.add(world, b);
+    bossBody = b;
     return b;
   }
 
@@ -178,7 +219,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       box(1300, GROUND - 197);
       clk(1250, GROUND - 188);
       plank(1250, GROUND - 283, 330);
-      addRound("boss", 1250, GROUND - 350, 56, 10, true, 0.0016);
+      // el Caos todavía no está: baja del cielo con la alerta (ver update) y se apoya arriba de todo
+      bossIntro = 0;
+      bossTrail = 1;
       enemy("excel", 1070, GROUND - 120);
       enemy("factura", 1430, GROUND - 120);
       enemy("reporte", 1500, GROUND - 30);
@@ -224,6 +267,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         const dmg = base * (proj(other) ? 1.7 : 1) * (other === ground ? (m.enemy ? 1.6 : 0.8) : 1);
         if (m.kind === "boss" && m.shield) {
           // el Caos se alimenta de los Problemones: mientras quede alguno, no se lo puede dañar
+          if (dmg > 1) bossShieldHit = 1;
           if (dmg > 1 && t - lastShieldMsg > 1.5) {
             lastShieldMsg = t;
             popups.add(self.position.x, self.position.y - 80, "¡Primero los Problemones!", COLORS.cian);
@@ -231,6 +275,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
           continue;
         }
         m.hp -= dmg;
+        if (m.kind === "boss") hurtBoss(self, dmg);
         if (dmg > 0.6 && t - lastHitSfx > 0.06) {
           lastHitSfx = t;
           sfx(m.kind === "binder" || m.kind === "clock" ? "g.near" : "g.hit", { volume: Math.min(0.9, 0.25 + dmg * 0.15), rate: 0.85 + Math.random() * 0.3 });
@@ -262,25 +307,21 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     }
     if (m.enemy) {
       killed++;
-      sfx(m.kind === "boss" ? "g.beam" : "g.bell", { volume: m.kind === "boss" ? 1 : 0.6, rate: m.kind === "boss" ? 1 : 1.3 + Math.random() * 0.3 });
-      const pts = m.kind === "boss" ? 1000 : 100;
-      const g = scorer.hit(pts, t);
-      popups.add(x, y - 40, `+${g}`, m.kind === "boss" ? COLORS.naranja : COLORS.violeta);
-      burst(x, y, m.kind === "boss" ? 70 : 24, ["#bdb3a0", "#d9cbb0", COLORS.cian, COLORS.lima]);
-      say("logro", m.kind === "boss" ? "¡Caos eliminado! Tu equipo ahora se enfoca en lo importante." : killed % 3 === 0 ? "¡Uno menos!" : undefined);
       metric();
-      if (m.kind === "boss" && enemiesLeft().length === 0) {
-        // fin: bonus por tiempo restante
-        const bonus = Math.round(clock.left * 25);
-        if (bonus > 0) {
-          scorer.hit(bonus, t, false);
-          popups.add(WORLD_W / 2, 300, `+${bonus} por tiempo`, COLORS.naranja);
-        }
-        sfx("g.win");
-        window.setTimeout(() => hooks.stage("outro", { title: "¡Derribaste el Caos!", text: `Eliminaste ${killed} de ${totalEnemies} Problemones y tu equipo de agentes quedó desplegado. Esto es lo que BGenAI puede hacer en tu empresa.` }), 1200);
-        window.setTimeout(() => hooks.stage(null), 11800);
-        finishGame(12);
+      if (m.kind === "boss") {
+        // explota en cadena (como en el juego 3); los puntos y el cierre llegan al final (bossDown)
+        bossBody = null;
+        corpse = { x, y, angle: b.angle, t: 0, boomIn: 0 };
+        sfx("g.beam");
+        shake = 1;
+        say("logro", "¡Se está desarmando!");
+        return;
       }
+      sfx("g.bell", { volume: 0.6, rate: 1.3 + Math.random() * 0.3 });
+      const g = scorer.hit(100, t);
+      popups.add(x, y - 40, `+${g}`, COLORS.violeta);
+      burst(x, y, 24, ["#bdb3a0", "#d9cbb0", COLORS.cian, COLORS.lima]);
+      say("logro", killed % 3 === 0 ? "¡Uno menos!" : undefined);
     } else {
       const pts = m.kind === "cpu" ? 50 : m.kind === "box" || m.kind === "plank" ? 25 : 10;
       scorer.hit(pts, t, false);
@@ -303,11 +344,57 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       Body.applyForce(b, b.position, Vector.mult(Vector.normalise(d), k));
       const m = meta(b);
       if (m) {
-        if (m.kind === "boss" && m.shield) continue;
-        m.hp -= (1 - dist / radius) * 2.2;
+        if (m.kind === "boss" && m.shield) {
+          bossShieldHit = 1;
+          continue;
+        }
+        const d = (1 - dist / radius) * 2.2;
+        m.hp -= d;
+        if (m.kind === "boss") hurtBoss(b, d);
         if (m.hp <= 0) destroy(b);
       }
     }
+  }
+
+  /** Feedback de cada golpe al Caos: destello, grito y cuánta vida le sacó. */
+  function hurtBoss(b: Matter.Body, dmg: number) {
+    if (dmg <= 0.05) return;
+    bossFlash = Math.min(1, bossFlash + 0.4 + dmg * 0.06);
+    bossMouth = 1;
+    if (dmg >= 0.8 && t - lastBossPopup > 0.3) {
+      lastBossPopup = t;
+      popups.add(b.position.x + (Math.random() - 0.5) * 90, b.position.y - 135, `−${Math.max(1, Math.round((dmg / BOSS_HP) * 100))}%`, COLORS.rojo);
+      sfx("g.hit", { volume: 0.9, rate: 0.6 });
+    }
+  }
+
+  /** Terminó de explotar: puntos, cartel y cierre (o, si quedan Problemones, se sigue jugando). */
+  function bossDown(c: { x: number; y: number }) {
+    bossKilled = true;
+    screenFlash = 1;
+    shake = 1.2;
+    burst(c.x, c.y, 60, [COLORS.naranja, "#ffd27a", "#fff", COLORS.rojo, COLORS.lima]);
+    burst(c.x, c.y - 60, 30, ["#D9CBB0", "#EDE6DA", "#BDB3A0"]);
+    sfx("g.bell", { volume: 0.9 });
+    const g = scorer.hit(1000, t);
+    if (enemiesLeft().length > 0) {
+      popups.add(c.x, c.y - 60, `+${g}`, COLORS.naranja);
+      say("logro", "¡Cayó el Caos! Terminá con los Problemones.");
+      return;
+    }
+    victory(g);
+  }
+
+  function victory(pts: number) {
+    if (ended) return;
+    const bonus = Math.round(clock.left * 25);
+    killPts = pts + (bonus > 0 ? scorer.hit(bonus, t, false) : 0);
+    killT = 0;
+    say("logro", "¡Caos eliminado! Tu equipo ahora se enfoca en lo importante.");
+    sfx("g.win");
+    window.setTimeout(() => hooks.stage("outro", { title: "¡Caos derrotado!", text: `Eliminaste ${killed} de ${totalEnemies} Problemones y derribaste al Caos Operativo. Esto es lo que BGenAI puede hacer en tu empresa.` }), 2200);
+    window.setTimeout(() => hooks.stage(null), 11800);
+    finishGame(12);
   }
 
   function metric() {
@@ -389,7 +476,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         ability();
         return false;
       }
-      if (!current || w.x > WORLD_W * 0.55) return false;
+      if (!current || w.x > WORLD_W * 0.55 || bossIntro >= 0) return false;
       aiming = { x: SLING.x, y: SLING.y };
       say("concentrado");
       rubber.start();
@@ -449,8 +536,11 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
 
   function nextLevel(reason: "clear" | "time" | "shots") {
     if (level >= 2) {
-      // el último nivel termina solo cuando cae el Caos (ver destroy); si ya cerró, nada que hacer
-      if (!ended) finishGame(1.2);
+      // el último nivel termina cuando cae el Caos (ver bossDown); si cayó antes que el último Problemón, acá
+      if (!ended) {
+        if (bossKilled) victory(0);
+        else finishGame(1.2);
+      }
       return;
     }
     if (reason === "clear") {
@@ -483,8 +573,49 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
   /* ---------- simulación ---------- */
   const LEVEL_END = [25, 55, opts.durationSec];
   function update(dt: number) {
-    if (!clock.step(dt)) return;
+    if (!clock.step(dt)) {
+      if (ended) afterEnd(dt);
+      return;
+    }
     t += dt;
+    // el Caos baja del cielo con la alerta y se apoya arriba de la torre
+    if (bossIntro >= 0) {
+      if (bossIntro === 0) {
+        sfx("g.phase", { rate: 0.7 });
+        music.duck(0.4, 0.6);
+        say("concentrado", "¡Cuidado! Se viene el Caos Operativo…");
+      }
+      bossIntro += dt;
+      shake = Math.max(shake, 0.15);
+      if (bossIntro >= BOSS_DESCENT) {
+        bossIntro = -1;
+        addBoss(BOSS_X, BOSS_LAND_Y);
+        shake = 0.9;
+        sfx("g.hit", { volume: 1, rate: 0.45 });
+        sfx("g.bell", { volume: 0.5, rate: 0.6 });
+        burst(BOSS_X, BOSS_LAND_Y + POD_H / 2, 26, ["#d9cbb0", "#bdb3a0", "#efe9e2"]);
+        music.duck(1, 0.8);
+        say("concentrado", "¡Está blindado! Primero eliminá a los Problemones.");
+      }
+    }
+    if (corpse) {
+      corpse.t += dt;
+      shake = Math.max(shake, 0.5);
+      corpse.boomIn -= dt;
+      if (corpse.boomIn <= 0) {
+        corpse.boomIn = 0.09;
+        burst(corpse.x + (Math.random() - 0.5) * POD_W, corpse.y + (Math.random() - 0.5) * POD_H, 10, [COLORS.naranja, "#ffd27a", "#fff", COLORS.rojo]);
+        if (t - lastBoomSfx > 0.18) {
+          lastBoomSfx = t;
+          sfx("g.hit", { volume: 0.6, rate: 0.6 + Math.random() * 0.5 });
+        }
+      }
+      if (corpse.t >= BOSS_DYING) {
+        const c = corpse;
+        corpse = null;
+        bossDown(c);
+      }
+    }
     Engine.update(engine, 1000 / 60);
     // los mini-agentes vuelan recto (anulan la gravedad)
     for (const m of minis) Body.applyForce(m, m.position, { x: 0, y: -m.mass * engine.gravity.y * 0.001 });
@@ -508,6 +639,8 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const bm = meta(left[0])!;
       if (bm.shield) {
         bm.shield = false;
+        bossExposedAt = t;
+        burst(left[0].position.x, left[0].position.y - 8, 30, [COLORS.cian, "#bff3f5", "#fff"]);
         sfx("g.power2");
         popups.add(left[0].position.x, left[0].position.y - 90, "¡EL CAOS QUEDÓ EXPUESTO!", COLORS.naranja);
         say("logro", "¡Ahora sí! Tirale con todo al Caos.");
@@ -517,7 +650,9 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (level === 2 && clock.phase === 2 && (bossOnly || clock.elapsed >= (80 / 90) * opts.durationSec)) clock.setPhase(3);
 
     if (!ended) {
-      if (left.length === 0) {
+      if (corpse) {
+        // el Caos está explotando: se espera el final de la secuencia
+      } else if (left.length === 0) {
         settleTimer += dt;
         if (settleTimer > 0.8) nextLevel("clear");
       } else if (!current && shotIndex >= LEVEL_SHOTS[level].length) {
@@ -532,11 +667,23 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         noShotsFor = 0;
       }
     }
-    if (clock.done && !ended) finishGame(0.4);
+    if (clock.done && !ended) {
+      // se terminó el tiempo justo mientras el Caos explotaba: cuenta como derrotado
+      if (corpse) {
+        const c = corpse;
+        corpse = null;
+        bossDown(c);
+      }
+      if (!ended) finishGame(0.4);
+    }
     void levelStartedAt;
     void LEVEL_END;
 
-    // partículas
+    stepFx(dt);
+  }
+
+  /** Efectos que siguen aunque el juego haya terminado (partículas, destellos, cartel final). */
+  function stepFx(dt: number) {
     for (const p of particles) {
       p.x += p.vx;
       p.y += p.vy;
@@ -547,6 +694,20 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
     if (cable) cable.life -= dt * 2;
     if (wave) wave.life -= dt * 2;
+    bossFlash = Math.max(0, bossFlash - dt * 4);
+    bossShieldHit = Math.max(0, bossShieldHit - dt * 3);
+    bossMouth = Math.max(0, bossMouth - dt * 2.2);
+    const bm = bossBody && meta(bossBody);
+    if (bm) bossTrail += (Math.max(0, bm.hp / bm.maxHp) - bossTrail) * Math.min(1, dt * 2.5);
+    screenFlash = Math.max(0, screenFlash - dt * 1.8);
+    if (killT >= 0) killT += dt;
+    shake *= Math.exp(-dt * 5);
+  }
+
+  function afterEnd(dt: number) {
+    if (paused) return;
+    t += dt;
+    stepFx(dt);
   }
 
   /* ---------- dibujo ---------- */
@@ -555,19 +716,22 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     return { s, ox: (state.w - WORLD_W * s) / 2, oy: state.h - WORLD_H * s };
   }
 
+  /** Cómo se ve el Caos ahora: mira al agente que vuela (o a la gomera). */
+  function podLook(x: number, hp: number, shield: number, thrust = 0, dying = -1) {
+    const fly = projectiles[projectiles.length - 1];
+    const tx = fly && fly.speed > 1.5 ? fly.position.x : SLING.x;
+    return { t, hp, flash: bossFlash, rage: hp < 0.35, gaze: Math.max(-1, Math.min(1, (tx - x) / 600)), mouth: bossMouth, shield, shieldHit: bossShieldHit, thrust, dying };
+  }
+
   function drawEnemy(b: Matter.Body, m: Meta) {
+    if (m.kind === "boss") {
+      const shield = m.shield ? 1 : Math.max(0, 1 - (t - bossExposedAt) / 0.5);
+      drawCaosPod(ctx, b.position.x, b.position.y, b.angle, podLook(b.position.x, Math.max(0, m.hp / m.maxHp), shield));
+      return;
+    }
     const r = m.r!;
     ctx.save();
     ctx.translate(b.position.x, b.position.y);
-    if (m.kind === "boss" && m.shield) {
-      ctx.beginPath();
-      ctx.arc(0, 0, r + 16 + Math.sin(t * 6) * 2, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(10,182,188,.6)";
-      ctx.lineWidth = 6;
-      ctx.setLineDash([10, 8]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
     ctx.rotate(b.angle);
     drawEnemySprite(ctx, m.kind as EnemyKind, r, t, b.id * 0.37);
     ctx.restore();
@@ -576,7 +740,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       const w = r * 1.8;
       ctx.fillStyle = COLORS.carbon;
       ctx.fillRect(b.position.x - w / 2 - 1, b.position.y - r - 24, w + 2, 8);
-      ctx.fillStyle = m.kind === "boss" ? COLORS.rojo : COLORS.naranja;
+      ctx.fillStyle = COLORS.naranja;
       ctx.fillRect(b.position.x - w / 2, b.position.y - r - 23, (w * m.hp) / m.maxHp, 6);
     }
   }
@@ -656,7 +820,10 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     // fondo estático (cielo, skyline de la compañía y piso) cacheado en un canvas aparte
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(background(v), 0, 0);
-    ctx.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * v.ox, state.dpr * v.oy);
+    const amp = opts.reducedMotion ? 0.3 : 1;
+    const shx = shake > 0.01 ? (Math.random() - 0.5) * 14 * shake * amp : 0;
+    const shy = shake > 0.01 ? (Math.random() - 0.5) * 10 * shake * amp : 0;
+    ctx.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * (v.ox + shx * v.s), state.dpr * (v.oy + shy * v.s));
 
     // gomera (parte de atrás; la horquilla delantera y la banda delantera van sobre el proyectil)
     drawSlingshot(ctx, SLING.x, SLING.y, GROUND, "back");
@@ -709,6 +876,15 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
         ctx.stroke();
       }
     }
+
+    // el Caos bajando del cielo (todavía no es un cuerpo) o explotando
+    if (bossIntro >= 0) {
+      const k = Math.min(1, bossIntro / BOSS_DESCENT);
+      const e = 1 - Math.pow(1 - k, 3);
+      const y = -260 + (BOSS_LAND_Y + 260) * e;
+      drawCaosPod(ctx, BOSS_X, y, Math.sin(bossIntro * 2.4) * 0.05 * (1 - k), podLook(BOSS_X, 1, 1, 1 - k * 0.6));
+    }
+    if (corpse) drawCaosPod(ctx, corpse.x, corpse.y, corpse.angle, podLook(corpse.x, 0, 0, 0, corpse.t / BOSS_DYING));
 
     // efectos
     if (cable && cable.life > 0) {
@@ -783,6 +959,41 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
       drawPlaque(ctx, SLING.x, SLING.y - 120, AGENTS[ag].name, ag === "bgen" ? "arrastrá hacia atrás y soltá" : `tocá ${AGENTS[ag].ability}`);
     }
     popups.draw(ctx, 1 / 60, 1.2);
+    // la interfaz del jefe va en coordenadas de pantalla: el mundo se apoya abajo y arriba sobra cielo
+    ctx.setTransform(state.dpr * v.s, 0, 0, state.dpr * v.s, state.dpr * (v.ox + shx * v.s), state.dpr * shy * v.s);
+    drawBossUi(state.h / v.s);
+  }
+
+  /** Barra de vida (la misma del juego 3), alerta mientras baja, cartel final y destello. VH: alto visible. */
+  function drawBossUi(VH: number) {
+    if (level === 2 && (bossIntro >= 0 || bossBody) && killT < 0) {
+      const intro = bossIntro >= 0 ? bossIntro : BOSS_DESCENT;
+      const show = Math.max(0, Math.min(1, (intro - 0.5) / 0.5));
+      const m = bossBody && meta(bossBody);
+      const hp = bossIntro >= 0 ? Math.max(0, Math.min(1, (intro - 0.9) / 1.1)) : m ? Math.max(0, m.hp / m.maxHp) : 0;
+      const shielded = bossIntro >= 0 || !!m?.shield;
+      const n = enemiesLeft().filter((b) => meta(b)?.kind !== "boss").length;
+      const state = shielded
+        ? { shielded: true, tag: "PROTEGIDO", tagColor: "#7fe3e7", caption: bossIntro >= 0 ? undefined : `Eliminá ${n === 1 ? "el último Problemón" : `los ${n} Problemones`} para dañarlo` }
+        : t - bossExposedAt < 2.5
+          ? { tag: "¡EXPUESTO!", tagColor: Math.sin(t * 14) > 0 ? "#ffb020" : "#fff", caption: "¡Tirale con todo!" }
+          : {};
+      drawBossBar(ctx, 386, 26, 520, hp, bossIntro >= 0 ? hp : bossTrail, t, show, !shielded && hp < 0.35, state);
+    }
+    if (bossIntro >= 0) {
+      const k = Math.min(1, bossIntro * 3, (BOSS_DESCENT + 0.3 - bossIntro) * 3);
+      const vg = ctx.createRadialGradient(WORLD_W / 2, VH / 2, 240, WORLD_W / 2, VH / 2, 900);
+      vg.addColorStop(0, "rgba(150,20,30,0)");
+      vg.addColorStop(1, `rgba(150,20,30,${0.3 * k * (0.75 + 0.25 * Math.sin(t * 6))})`);
+      ctx.fillStyle = vg;
+      ctx.fillRect(-20, -20, WORLD_W + 40, VH + 40);
+      drawWarning(ctx, WORLD_W, VH * 0.42, t, k);
+    }
+    drawDefeated(ctx, WORLD_W / 2, VH * 0.34, killT, killPts);
+    if (screenFlash > 0) {
+      ctx.fillStyle = `rgba(255,250,235,${screenFlash * 0.85})`;
+      ctx.fillRect(-20, -20, WORLD_W + 40, VH + 40);
+    }
   }
 
   // depuración: /?debug expone el estado de la física en window.__deploy
@@ -805,6 +1016,14 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     pause(p: boolean) {
       paused = p;
       clock.paused = p;
+    },
+    /** Modo desarrollo: salta a la torre p (el Caos es la tercera: 2 y 3 llevan ahí). */
+    skipTo(p) {
+      const target = Math.min(2, p) as PhaseIndex;
+      if (ended || target <= level) return;
+      clock.jumpTo(target);
+      level = target;
+      buildLevel(level);
     },
     destroy() {
       cancelAnimationFrame(raf);
