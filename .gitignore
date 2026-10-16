@@ -43,3 +43,6 @@ next-env.d.ts
 # ejemplo de variables (sí se versiona)
 !.env.example
 !.env.development
+
+# almacén local de jugadores (solo stand/desarrollo)
+/.data/
