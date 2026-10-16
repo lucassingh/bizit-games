@@ -8,12 +8,12 @@ import { DECAGON_PATH } from "@/lib/brand";
 import { useSession } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import { putLead } from "@/lib/leads/queue";
-import { isEmail, OCCUPATIONS, PAINS, type LeadPayload } from "@/lib/leads/types";
+import { formatArMobile, isEmail, normalizeArMobile, OCCUPATIONS, PAINS, type LeadPayload } from "@/lib/leads/types";
 import type { KioskConfig } from "@/lib/config";
 import { abandon } from "../Experience";
 import s from "./screens.module.css";
 
-type Errors = Partial<Record<"firstName" | "lastName" | "email" | "occupation" | "consent", string>>;
+type Errors = Partial<Record<"firstName" | "lastName" | "email" | "phone" | "occupation" | "consent", string>>;
 
 /** Registro del lead. Se guarda en el dispositivo antes de jugar (funciona sin red). */
 export default function Register({ config }: { config: KioskConfig }) {
@@ -22,6 +22,7 @@ export default function Register({ config }: { config: KioskConfig }) {
     firstName: player?.firstName || "",
     lastName: player?.lastName || "",
     email: player?.email || "",
+    phone: player?.phone ? formatArMobile(player.phone) : "",
     occupation: player?.occupation || "",
     pain: player?.pain || "",
     consent: !!player,
@@ -45,6 +46,8 @@ export default function Register({ config }: { config: KioskConfig }) {
     if (!f.firstName.trim()) er.firstName = "Contanos tu nombre";
     if (!f.lastName.trim()) er.lastName = "Y tu apellido";
     if (!isEmail(f.email)) er.email = "Revisá el email";
+    const phone = normalizeArMobile(f.phone);
+    if (!phone) er.phone = f.phone.trim() ? "Revisá el número: código de área + celular" : "Dejanos tu celular";
     if (!f.occupation) er.occupation = "Elegí una opción";
     if (!f.consent) er.consent = "Necesitamos tu OK para contactarte";
     setErrors(er);
@@ -60,6 +63,7 @@ export default function Register({ config }: { config: KioskConfig }) {
       firstName: f.firstName.trim(),
       lastName: f.lastName.trim(),
       email: f.email.trim(),
+      phone: phone!,
       occupation: f.occupation,
       pain: f.pain || undefined,
       consentAt: player?.consentAt || now,
@@ -112,11 +116,40 @@ export default function Register({ config }: { config: KioskConfig }) {
                   {errors.lastName && <span className={s.err}>{errors.lastName}</span>}
                 </label>
               </div>
-              <label className={s.field}>
-                <span className={s.label}>Email</span>
-                <input id="email" className={s.input} type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" value={f.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" aria-invalid={!!errors.email} />
-                {errors.email && <span className={s.err}>{errors.email}</span>}
-              </label>
+              <div className={s.row2}>
+                <label className={s.field}>
+                  <span className={s.label}>Email</span>
+                  <input id="email" className={s.input} type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" value={f.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" aria-invalid={!!errors.email} />
+                  {errors.email && <span className={s.err}>{errors.email}</span>}
+                </label>
+                <label className={s.field}>
+                  <span className={s.label}>
+                    Celular <small>(con código de área)</small>
+                  </span>
+                  <input
+                    id="phone"
+                    className={s.input}
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="11 2345 6789"
+                    value={f.phone}
+                    onChange={(e) => set("phone", e.target.value.replace(/[^\d\s()+-]/g, ""))}
+                    onBlur={() => {
+                      // si es válido, se reescribe prolijo (+54 9 11 2345-6789): el visitante ve que se entendió
+                      const n = normalizeArMobile(f.phone);
+                      if (n) set("phone", formatArMobile(n));
+                    }}
+                    autoComplete="tel-national"
+                    aria-invalid={!!errors.phone}
+                    aria-describedby={errors.phone ? "phone-err" : undefined}
+                  />
+                  {errors.phone && (
+                    <span id="phone-err" className={s.err}>
+                      {errors.phone}
+                    </span>
+                  )}
+                </label>
+              </div>
               <div className={s.field} role="group" aria-label="Ocupación">
                 <span className={s.label}>¿A qué te dedicás?</span>
                 <div className={s.chips}>

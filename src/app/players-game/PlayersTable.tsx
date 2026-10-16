@@ -5,9 +5,11 @@ import { ChevronLeft, ChevronRight, Download, KeyRound, Medal, RefreshCw, Search
 import { BGenAILogo, BizitLogo } from "@/components/Logos";
 import { GAMES, type GameId } from "@/lib/games";
 import type { StoredLead } from "@/lib/leads/store";
+import { countPeople, rankPlayers, type RankedRow } from "@/lib/leads/consolidate";
+import { formatArMobile } from "@/lib/leads/types";
 import s from "./players.module.css";
 
-type Row = StoredLead & { rank: number; plays: number; best: boolean };
+type Row = RankedRow<StoredLead>;
 
 const PAGE_SIZES = [10, 25, 50];
 const KEY_STORAGE = "bgc-players-key";
@@ -67,38 +69,22 @@ export default function PlayersTable() {
     try {
       k = localStorage.getItem(KEY_STORAGE) || "";
     } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- la clave vive en localStorage (solo cliente)
     setKey(k);
     void load(k);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ranking: mejor partida por persona (email), de mayor a menor */
-  const ranked: Row[] = useMemo(() => {
-    const all = (leads || []).filter((l) => game === "all" || l.game === game);
-    const byEmail = new Map<string, number>();
-    for (const l of all) {
-      const e = l.email.trim().toLowerCase();
-      byEmail.set(e, (byEmail.get(e) || 0) + 1);
-    }
-    const sorted = [...all].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.playedAt || a.createdAt).localeCompare(b.playedAt || b.createdAt));
-    const seen = new Set<string>();
-    const out: Row[] = [];
-    let rank = 0;
-    for (const l of sorted) {
-      const e = l.email.trim().toLowerCase();
-      const best = !seen.has(e);
-      seen.add(e);
-      if (bestOnly && !best) continue;
-      if (best) rank++;
-      out.push({ ...l, rank: best ? rank : 0, plays: byEmail.get(e) || 1, best });
-    }
-    return out;
-  }, [leads, game, bestOnly]);
+  /* ranking: mejor partida por persona (mismo email + mismo celular), de mayor a menor */
+  const ranked: Row[] = useMemo(() => rankPlayers(leads || [], { game, bestOnly }), [leads, game, bestOnly]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return ranked;
-    return ranked.filter((r) => `${r.firstName} ${r.lastName} ${r.email} ${r.occupation} ${r.pain || ""}`.toLowerCase().includes(q));
+    const qd = q.replace(/\D/g, "");
+    return ranked.filter(
+      (r) => `${r.firstName} ${r.lastName} ${r.email} ${r.occupation} ${r.pain || ""}`.toLowerCase().includes(q) || (qd.length >= 4 && (r.phone || "").includes(qd)),
+    );
   }, [ranked, query]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -107,20 +93,20 @@ export default function PlayersTable() {
 
   const stats = useMemo(() => {
     const all = leads || [];
-    const emails = new Set(all.map((l) => l.email.trim().toLowerCase()));
     const played = all.filter((l) => typeof l.score === "number");
     const avg = played.length ? Math.round(played.reduce((a, l) => a + (l.score || 0), 0) / played.length) : 0;
-    return { players: emails.size, plays: played.length, avg, top: played[0]?.score ?? 0 };
+    return { players: countPeople(all), plays: played.length, avg, top: played[0]?.score ?? 0 };
   }, [leads]);
 
   function exportCsv() {
-    const head = ["Puesto", "Nombre", "Apellido", "Email", "A qué se dedica", "Qué le quita más tiempo", "Juego", "Puntaje", "Nivel", "Horas/mes", "Jugado", "Partidas", "Dispositivo", "Campaña", "Odoo"];
+    const head = ["Puesto", "Nombre", "Apellido", "Email", "Celular", "A qué se dedica", "Qué le quita más tiempo", "Juego", "Puntaje", "Nivel", "Horas/mes", "Jugado", "Partidas", "Dispositivo", "Campaña", "Odoo"];
     const lines = filtered.map((r) =>
       [
         r.rank || "",
         r.firstName,
         r.lastName,
         r.email,
+        r.phone || "",
         r.occupation,
         r.pain || "",
         r.game ? GAMES[r.game].name : "",
@@ -160,7 +146,7 @@ export default function PlayersTable() {
       <section className={s.hero}>
         <div>
           <h1>Ranking de jugadores</h1>
-          <p>Todas las personas que se registraron y jugaron en el stand, con los datos del formulario. Ordenadas por puntaje, de mayor a menor.</p>
+          <p>Todas las personas que se registraron y jugaron en el stand, con los datos del formulario. Ordenadas por puntaje, de mayor a menor. Una persona es el mismo email y el mismo celular: si jugó varias veces, cuenta su puntaje más alto.</p>
         </div>
         <div className={s.kpis}>
           <div className={s.kpi}>
@@ -209,7 +195,7 @@ export default function PlayersTable() {
         <label className={s.search}>
           <Search />
           <input
-            placeholder="Buscar por nombre, email, área…"
+            placeholder="Buscar nombre, email o celular…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -234,7 +220,7 @@ export default function PlayersTable() {
         </div>
         <label className={s.toggle}>
           <input type="checkbox" checked={bestOnly} onChange={(e) => setBestOnly(e.target.checked)} />
-          Mejor partida por persona
+          Mejor puntaje por persona
         </label>
         <div className={s.spacer} />
         <button className={s.btnGhost} onClick={() => void load()} disabled={loading}>
@@ -290,6 +276,7 @@ export default function PlayersTable() {
                           {r.firstName} {r.lastName}
                         </b>
                         <a href={`mailto:${r.email}`}>{r.email}</a>
+                        {r.phone && <a href={`tel:${r.phone}`}>{formatArMobile(r.phone)}</a>}
                         {r.plays > 1 && r.best && <small>{r.plays} partidas</small>}
                       </div>
                     </td>

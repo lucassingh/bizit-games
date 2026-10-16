@@ -53,6 +53,7 @@ export function buildLeadVals(l: LeadPayload, env: Pick<OdooEnv, "teamId" | "tag
   const lines: [string, string | number | undefined][] = [
     ["Campaña", l.campaign],
     ["Stand / dispositivo", `${l.stand} · ${l.device}`],
+    ["Celular", l.phone],
     ["Ocupación", l.occupation],
     ["Lo que más tiempo le quita", l.pain],
     ["Juego", l.game],
@@ -74,6 +75,7 @@ export function buildLeadVals(l: LeadPayload, env: Pick<OdooEnv, "teamId" | "tag
     type: "lead",
     contact_name: full,
     email_from: l.email.trim().toLowerCase(),
+    ...(l.phone ? { phone: l.phone } : {}),
     function: l.occupation,
     description,
   };
