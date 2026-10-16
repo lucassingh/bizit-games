@@ -44,14 +44,9 @@
   color: var(--lima);
 }
 
-.presenta {
+.topRight {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font: 500 12px var(--mono);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #b8bcc8;
 }
 
 .hero {
@@ -326,8 +321,12 @@
   vertical-align: middle;
 }
 
+.table tbody tr {
+  background: #fff;
+}
+
 .table tbody tr:hover td {
-  background: #fbfaf8;
+  background: #f4f2ef;
 }
 
 .num {
@@ -341,11 +340,7 @@
   padding: 40px 16px !important;
 }
 
-/* top 5 destacados */
-.top5 td {
-  background: linear-gradient(90deg, rgba(178, 243, 38, 0.18), rgba(10, 182, 188, 0.06) 40%, transparent 70%);
-}
-
+/* top 5: sin fondo de color, solo una guía lima a la izquierda */
 .top5 td:first-child {
   box-shadow: inset 4px 0 0 var(--lima);
 }

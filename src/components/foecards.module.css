@@ -13,6 +13,11 @@
   color: var(--muted);
 }
 
+.title em {
+  font-style: normal;
+  color: var(--accent);
+}
+
 .row {
   list-style: none;
   margin: 0;
@@ -36,6 +41,11 @@
   box-shadow: 0 calc(4 * var(--u)) 0 #e3dcd4;
   animation: foe-in 0.45s both;
   min-width: 0;
+}
+
+/* las cartas de Problemón ya no llevan pill: se compensa el alto para alinear los sprites */
+.problemon {
+  padding-top: calc(26 * var(--u));
 }
 
 /* esquina superior cortada, como las cartas del HUD */
@@ -160,5 +170,8 @@
   }
   .card {
     padding: calc(6 * var(--u)) calc(5 * var(--u)) calc(7 * var(--u));
+  }
+  .problemon {
+    padding-top: calc(22 * var(--u));
   }
 }

@@ -153,9 +153,7 @@ export default function PlayersTable() {
           <span className={s.kicker}>Game Center · Jugadores</span>
         </div>
         <div className={s.topRight}>
-          <span className={s.presenta}>
-            presenta <BizitLogo height={22} />
-          </span>
+          <BizitLogo height={24} />
         </div>
       </header>
 

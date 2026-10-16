@@ -19,11 +19,13 @@ export default function FoeCards({ game, delay = 0.3 }: { game: GameId; delay?: 
   const foes = foesFor(game);
   return (
     <div className={s.wrap}>
-      <span className={s.title}>A qué te enfrentás</span>
+      <span className={s.title}>
+        A qué te enfrentás: <em>los Problemones</em>
+      </span>
       <ul className={s.row} style={{ "--n": foes.length } as React.CSSProperties}>
         {foes.map((f, i) => (
           <li key={f.id} className={`${s.card} ${s[f.kind]}`} style={{ animationDelay: `${delay + i * 0.07}s` }}>
-            <span className={s.chip}>{KIND_LABEL[f.kind]}</span>
+            {f.kind !== "problemon" && <span className={s.chip}>{KIND_LABEL[f.kind]}</span>}
             <span className={s.art}>
               <Art foe={f} />
             </span>
