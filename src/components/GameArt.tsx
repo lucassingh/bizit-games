@@ -72,25 +72,49 @@ function DeployArt() {
 }
 
 function CentralArt() {
-  const areas = [
-    [60, 50, COLORS.naranja],
-    [260, 50, COLORS.violeta],
-    [60, 150, COLORS.rojo],
-    [260, 150, COLORS.carbon],
+  // Lluvia de Tareas: la torre de noche escupe tareas; BGen las automatiza desde la vereda.
+  // tareas que caen (x, y, color)
+  const tasks = [
+    [96, 44, COLORS.naranja],
+    [150, 70, COLORS.violeta],
+    [142, 24, COLORS.rojo],
+    [206, 58, COLORS.cian],
   ] as const;
   return (
     <svg viewBox="0 0 320 200" aria-hidden="true">
-      <rect width="320" height="200" fill="#F6F4F2" />
-      {areas.map(([x, y], i) => (
-        <path key={i} d={`M160 100 L${x} ${y}`} stroke={i < 2 ? COLORS.cian : "#d7d1ca"} strokeWidth="6" strokeDasharray={i < 2 ? "10 8" : "0"} strokeLinecap="round" />
+      <rect width="320" height="200" fill="#131a2e" />
+      {/* estrellas */}
+      {[30, 70, 110, 250, 290, 300].map((x, i) => (
+        <rect key={i} x={x} y={14 + (i % 3) * 18} width="2" height="2" fill="#ffffff" opacity="0.6" />
       ))}
-      {areas.map(([x, y, c], i) => (
-        <rect key={i} x={x - 30} y={y - 22} width="60" height="44" rx="12" fill={c} />
+      {/* torres de fondo */}
+      <rect x="20" y="70" width="40" height="110" fill="#1d2740" />
+      <rect x="262" y="58" width="42" height="122" fill="#1d2740" />
+      {/* torre central iluminada */}
+      <rect x="120" y="30" width="80" height="150" fill="#232e4a" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <rect key={i} x="138" y={48 + i * 26} width="44" height="14" rx="2" fill={i >= 3 ? COLORS.lima : COLORS.naranja} opacity={i >= 3 ? 0.9 : 0.8} />
       ))}
-      <circle cx="160" cy="100" r="26" fill="#fff" stroke="#E6E1DC" strokeWidth="4" />
-      {[0, 1, 2].map((i) => (
-        <rect key={i} x={145 + i * 11} y={92} width="9" height="16" rx="3" fill={[COLORS.naranja, COLORS.violeta, COLORS.cian][i]} />
+      {/* vereda */}
+      <rect y="176" width="320" height="24" fill="#3a3f4d" />
+      <rect y="176" width="320" height="4" fill="#8d919c" />
+      {/* tareas cayendo (cubos con carita) */}
+      {tasks.map(([x, y, c], i) => (
+        <g key={i}>
+          <rect x={x - 11} y={y - 11} width="22" height="22" rx="6" fill={c} />
+          <circle cx={x - 4} cy={y - 2} r="2" fill="#fff" />
+          <circle cx={x + 4} cy={y - 2} r="2" fill="#fff" />
+          <path d={`M${x - 4} ${y + 5} Q${x} ${y + 2} ${x + 4} ${y + 5}`} stroke="#fff" strokeWidth="1.5" fill="none" />
+        </g>
       ))}
+      {/* rayo de automatización */}
+      <path d="M150 150 L150 86" stroke={COLORS.lima} strokeWidth="5" strokeLinecap="round" opacity="0.9" />
+      <path d="M150 150 L150 86" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+      {/* BGen en la vereda */}
+      <polygon points="150,138 162,144 166,156 162,168 150,174 138,168 134,156 138,144" fill={COLORS.bgenBody} />
+      <rect x="142" y="150" width="16" height="10" rx="5" fill={COLORS.visor} />
+      <circle cx="147" cy="155" r="1.8" fill={COLORS.lima} />
+      <circle cx="153" cy="155" r="1.8" fill={COLORS.lima} />
     </svg>
   );
 }

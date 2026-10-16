@@ -480,7 +480,7 @@
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   align-items: center;
-  gap: calc(36 * var(--u));
+  gap: calc(28 * var(--u));
   min-height: 0;
 }
 
@@ -493,10 +493,10 @@
 
 .mission {
   font-family: var(--display);
-  font-size: calc(44 * var(--u));
-  line-height: 1;
+  font-size: calc(40 * var(--u));
+  line-height: 1.02;
   letter-spacing: -1px;
-  margin: calc(10 * var(--u)) 0 calc(12 * var(--u));
+  margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
 }
 
 .mission em {
@@ -513,18 +513,18 @@
 .phases {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(12 * var(--u));
-  margin: calc(18 * var(--u)) 0;
+  gap: calc(10 * var(--u));
+  margin: calc(8 * var(--u)) 0;
 }
 
 .phaseCard {
-  padding: calc(14 * var(--u));
+  padding: calc(11 * var(--u)) calc(13 * var(--u));
   border-radius: var(--radius);
   background: #fff;
   border: calc(2 * var(--u)) solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: calc(8 * var(--u));
+  gap: calc(6 * var(--u));
   animation: rise-in 0.5s both;
 }
 
@@ -550,7 +550,7 @@
   display: flex;
   gap: calc(12 * var(--u));
   flex-wrap: wrap;
-  margin-bottom: calc(22 * var(--u));
+  margin-bottom: calc(12 * var(--u));
 }
 
 .control {
@@ -762,5 +762,31 @@
   }
   .mission {
     font-size: calc(36 * var(--u));
+  }
+}
+
+/* tablet apaisada (≈800 px de alto): el briefing entero tiene que entrar sin scroll */
+@media (max-height: 920px) {
+  .mission {
+    font-size: calc(36 * var(--u));
+    margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
+  }
+  .howTo {
+    font-size: calc(14 * var(--u));
+  }
+  .phases {
+    margin: calc(8 * var(--u)) 0;
+  }
+  .phaseCard {
+    padding: calc(10 * var(--u)) calc(12 * var(--u));
+    gap: calc(5 * var(--u));
+  }
+  .controlsRow {
+    gap: calc(8 * var(--u));
+    margin-bottom: calc(10 * var(--u));
+  }
+  .control {
+    padding: calc(5 * var(--u)) calc(14 * var(--u)) calc(5 * var(--u)) calc(8 * var(--u));
+    font-size: calc(13.5 * var(--u));
   }
 }
