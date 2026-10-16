@@ -20,6 +20,9 @@ export default function RenderTool() {
       const { buildWorld } = await import("@/games/compania/world");
       const out: Record<string, string> = {};
       const say = (m: string) => setLog((l) => [...l, m]);
+      // ?only=hero (o problemones,city): renderiza solo esas partes
+      const only = new URLSearchParams(location.search).get("only")?.split(",");
+      const want = (k: string) => !only || only.includes(k);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.setPixelRatio(1);
@@ -32,7 +35,7 @@ export default function RenderTool() {
 
       /* ---------- Problemones ---------- */
       const kinds = ["mail", "fantasma", "excel", "caja", "factura", "botella", "conector", "auto", "orq"] as const;
-      for (const kind of kinds) {
+      for (const kind of want("problemones") ? kinds : []) {
         const scene = new THREE.Scene();
         scene.add(new THREE.HemisphereLight("#ffffff", "#d8cfc4", 1.25));
         const sun = new THREE.DirectionalLight("#fff3e2", 2.1);
@@ -64,7 +67,7 @@ export default function RenderTool() {
       }
 
       /* ---------- ciudad de fondo ---------- */
-      {
+      if (want("city")) {
         const scene = new THREE.Scene();
         scene.add(new THREE.HemisphereLight("#ffffff", "#d8cfc4", 1.25));
         const sun = new THREE.DirectionalLight("#fff3e2", 2.1);
@@ -151,6 +154,36 @@ export default function RenderTool() {
           renderer.setClearColor(0x000000, 0);
           say("hq night ok");
         }
+      }
+
+      /* ---------- portada del inicio: la empresa de día, en contrapicado (→ public/sprites/home/cover-city.webp) ---------- */
+      if (want("hero")) {
+        const q = new URLSearchParams(location.search);
+        const v3 = (k: string, d: [number, number, number]) => (q.get(k)?.split(",").map(Number) as [number, number, number] | undefined) ?? d;
+        const scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight("#ffffff", "#d8cfc4", 1.3));
+        const sun = new THREE.DirectionalLight("#fff1dc", 2.3);
+        sun.position.set(-70, 110, 60);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(4096, 4096);
+        Object.assign(sun.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 1, far: 500 });
+        scene.add(sun, sun.target);
+        const world = buildWorld(scene);
+        await world.ready;
+        for (const z of Object.values(world.zones)) {
+          z.power = 1;
+          world.applyPower(z);
+        }
+        const W = Number(q.get("w") ?? 2000), H = Number(q.get("h") ?? 1900);
+        renderer.setSize(W, H);
+        const cam = new THREE.PerspectiveCamera(Number(q.get("fov") ?? 70), W / H, 0.5, 1200);
+        // contrapicado desde la avenida: Ventas a la izquierda, la Casa Central al fondo con los arcos de IA
+        cam.position.set(...v3("cam", [-2, 6, 40]));
+        cam.lookAt(...v3("look", [-20, 32, -29]));
+        renderer.setClearColor(0x000000, 0);
+        renderer.render(scene, cam);
+        out.hero = renderer.domElement.toDataURL("image/png");
+        say("hero ok");
       }
       (window as unknown as { __sprites: Record<string, string>; __done: boolean }).__sprites = out;
       (window as unknown as { __done: boolean }).__done = true;

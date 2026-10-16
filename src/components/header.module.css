@@ -22,6 +22,20 @@
   color: var(--muted);
 }
 
+.compact {
+  flex-wrap: wrap;
+  row-gap: calc(10 * var(--u));
+}
+
+.compact .brand {
+  gap: calc(11 * var(--u));
+}
+
+.compact .presenta {
+  font-size: calc(9.5 * var(--u));
+  letter-spacing: 1.4px;
+}
+
 .steps {
   display: flex;
   gap: calc(6 * var(--u));
