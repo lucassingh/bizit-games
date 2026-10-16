@@ -8,7 +8,8 @@ import { Crown, Users, type IconNode } from "lucide";
 import { drawIcon } from "../shared/icons";
 import { drawEnemySprite, type EnemyKind } from "../deploy/art";
 import { drawBoard, drawNightStatic, drawPerson, drawWindows, HQ_IMG, towerWindows } from "./office";
-import { CORE_HALF, drawBoss, drawBossBar, drawWarning, HALF_W, HATCHES, hullBottom, MOUTH_Y } from "./boss";
+import { CORE_HALF, drawBoss, HALF_W, HATCHES, hullBottom, MOUTH_Y } from "./boss";
+import { drawBossBar, drawDefeated, drawWarning } from "../shared/caos";
 
 /**
  * Juego 3 · Bandeja BGen — "De manual a automático" (docs/05, v3).
@@ -1036,27 +1037,7 @@ const createGame: CreateGame = (host, hooks: GameHooks, opts) => {
     if (clock.phase === 3 && !boss.fight && boss.introT >= 0) drawWarning(ctx, W, 380, t, Math.min(1, boss.introT * 3, introK));
 
     // ¡derrotado!
-    if (killT >= 0 && killT < 3) {
-      const k = Math.min(1, killT / 0.35);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, (3 - killT) / 0.4);
-      ctx.translate(W / 2, 300);
-      ctx.scale(0.6 + 0.4 * k + Math.sin(killT * 8) * 0.015, 0.6 + 0.4 * k);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = '900 76px "Archivo Black", Archivo, Arial';
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = "#0A0A0C";
-      ctx.strokeText("¡CAOS DERROTADO!", 0, 0);
-      ctx.fillStyle = COLORS.lima;
-      ctx.fillText("¡CAOS DERROTADO!", 0, 0);
-      ctx.font = '900 30px "Archivo Black", Archivo, Arial';
-      ctx.lineWidth = 8;
-      ctx.strokeText(`+${killPts.toLocaleString("es-AR")}`, 0, 64);
-      ctx.fillStyle = "#fff";
-      ctx.fillText(`+${killPts.toLocaleString("es-AR")}`, 0, 64);
-      ctx.restore();
-    }
+    drawDefeated(ctx, W / 2, 300, killT, killPts);
     if (screenFlash > 0) {
       ctx.fillStyle = `rgba(255,250,235,${screenFlash * 0.85})`;
       ctx.fillRect(-20, -20, W + 40, H + 40);
